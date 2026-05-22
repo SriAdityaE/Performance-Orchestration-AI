@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "test_name": "baseline",
+      "environment_label": "vm",
+      "test_plan_path": "L:/MCP/AI/Performance-Orchestration-AI/SDD-project/tests/load_test.jmx",
+      "user_count": 100,
+      "ramp_up_seconds": 30,
+      "duration_minutes": 5,
+      "expected_throughput": 200.0,
+      "extra_args": {
+        "threads": "100"
+      }
+    }
+  ],
+  "notification": {
+    "channel": "slack"
+  }
+}

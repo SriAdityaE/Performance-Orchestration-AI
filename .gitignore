@@ -30,3 +30,7 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Runtime artifacts
+shared-root/
+.tmp/
