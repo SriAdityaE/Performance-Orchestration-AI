@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "perf-orchestrator"
+name = "sdd-one"
 version = "0.1.0"
 description = "Local-to-VM performance test orchestration with Slack reporting"
 requires-python = ">=3.11"
