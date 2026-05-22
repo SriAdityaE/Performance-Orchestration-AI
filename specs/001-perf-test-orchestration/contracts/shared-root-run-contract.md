@@ -56,6 +56,13 @@ Required top-level fields:
 4. VM-side runner writes test-level state updates to `status.json`.
 5. Final report is written to `reports/final_report.json` before `final_report_ready` is emitted.
 6. `final_report_ready` event details include `report_path`, `report_payload`, and `custom_report_format`.
+7. Local and VM `PERF_SHARED_ROOT` values may differ as paths, but they must map to the same physical shared storage.
+
+## Operational Notes
+
+- Operator shortcuts are provided by `scripts/Start-VmRunner.ps1` and `scripts/Start-LocalSubmit.ps1`.
+- `--request-file` must always include an explicit JSON file path.
+- PowerShell environment variables are scoped to the current terminal session.
 
 ## Failure Classification Rules
 

@@ -7,9 +7,38 @@
 3. Build the Slack notifier artifact from the repository root.
 4. Ensure `PERF_SHARED_ROOT`, `JMETER_HOME`, `NOTIFICATION_CHANNEL`, and `SLACK_WEBHOOK_URL` are set correctly in the environment.
 5. Start the VM-side runner.
+6. Keep VM and local terminals separate; environment variables are session-scoped in PowerShell.
 
 ```powershell
 npm run build:notifier
+```
+
+## Script Shortcuts
+
+The repository includes helper scripts to avoid repeating environment setup each run:
+
+- VM runner script: `scripts/Start-VmRunner.ps1`
+- Local submit script: `scripts/Start-LocalSubmit.ps1`
+
+VM runner (continuous mode):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Start-VmRunner.ps1 \
+   -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" \
+   -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" \
+   -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" \
+   -NotificationChannel slack \
+   -SlackWebhookUrl "https://hooks.slack.com/services/REPLACE/ME"
+```
+
+Local submit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Start-LocalSubmit.ps1 \
+   -ProjectRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project" \
+   -PerfSharedRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project\shared-root" \
+   -RequestFile "request.json" \
+   -NotificationChannel terminal
 ```
 
 ## Start the VM-Side Runner
@@ -32,6 +61,8 @@ Prepare a request JSON file with one or two tests, then run:
 python -m perf_orchestrator.cli.main --request-file .\request.json
 ```
 
+Important: `--request-file` always requires an explicit file path argument.
+
 Minimal request example:
 
 ```json
@@ -40,7 +71,7 @@ Minimal request example:
       {
          "test_name": "baseline",
          "environment_label": "vm",
-         "test_plan_path": "L:/MCP/Performance_TestExecution-Reporting/tests/load_test.jmx",
+         "test_plan_path": "L:/MCP/AI/Performance-Orchestration-AI/SDD-project/tests/load_test.jmx",
          "user_count": 100,
          "ramp_up_seconds": 30,
          "duration_minutes": 60,
@@ -75,3 +106,4 @@ Minimal request example:
 - Confirm report files are created under `reports/`.
 - Confirm Slack receives the approved lifecycle events and final report.
 - Confirm `events.jsonl` includes the same lifecycle sequence that appears in Slack.
+- Confirm both local and VM `PERF_SHARED_ROOT` values resolve to the same physical shared storage.
