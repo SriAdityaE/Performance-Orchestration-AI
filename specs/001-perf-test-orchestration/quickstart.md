@@ -23,21 +23,21 @@ The repository includes helper scripts to avoid repeating environment setup each
 VM runner (continuous mode):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Start-VmRunner.ps1 \
-   -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" \
-   -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" \
-   -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" \
-   -NotificationChannel slack \
+powershell -ExecutionPolicy Bypass -File .\Start-VmRunner.ps1 `
+   -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" `
+   -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" `
+   -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" `
+   -NotificationChannel slack `
    -SlackWebhookUrl "https://hooks.slack.com/services/REPLACE/ME"
 ```
 
 Local submit:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Start-LocalSubmit.ps1 \
-   -ProjectRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project" \
-   -PerfSharedRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project\shared-root" \
-   -RequestFile "request.json" \
+powershell -ExecutionPolicy Bypass -File .\Start-LocalSubmit.ps1 `
+   -ProjectRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project" `
+   -PerfSharedRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project\shared-root" `
+   -RequestFile "request.json" `
    -NotificationChannel terminal
 ```
 
