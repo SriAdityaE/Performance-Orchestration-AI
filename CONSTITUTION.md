@@ -69,3 +69,4 @@ This constitution is the controlling guidance for feature planning, implementati
 - Operational guidance should remain aligned with `.github/copilot-instructions.md` and any future approved plan artifacts.
 
 **Version**: 1.0.0 | **Ratified**: 2026-05-22 | **Last Amended**: 2026-05-22
+
