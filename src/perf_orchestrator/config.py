@@ -76,6 +76,9 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
 
     perf_shared_root = _require_path("PERF_SHARED_ROOT", source.get("PERF_SHARED_ROOT"))
     jmeter_home = _require_path("JMETER_HOME", source.get("JMETER_HOME"))
+    jmeter_executable = jmeter_home / "bin" / "jmeter.bat"
+    if not jmeter_executable.exists():
+        raise ConfigError(f"JMETER_HOME is invalid. Missing executable: {jmeter_executable}")
     slack_webhook_url = source.get("SLACK_WEBHOOK_URL") or None
     teams_webhook_url = source.get("TEAMS_WEBHOOK_URL") or None
 
