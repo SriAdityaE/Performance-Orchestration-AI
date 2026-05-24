@@ -46,22 +46,51 @@ class JMeterCommandRunner:
             command.append(f"-J{key}={value}")
 
         max_attempts = 1 + self._settings.retry_policy.vm_runner_start_retries
+        timeout_seconds = (test.duration_minutes * 60) + self._settings.timeout_policy.completion_buffer_seconds
         last_error = "JMeter execution failed"
         for attempt in range(1, max_attempts + 1):
-            completed = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=(test.duration_minutes * 60) + self._settings.timeout_policy.completion_buffer_seconds,
-                check=False,
+            # Create logs immediately so operators can see activity while the test is running.
+            stdout_path.write_text(
+                f"Attempt {attempt}/{max_attempts}\nCommand: {' '.join(command)}\n\n",
+                encoding="utf-8",
             )
-            stdout_path.write_text(completed.stdout or "", encoding="utf-8")
-            stderr_path.write_text(completed.stderr or "", encoding="utf-8")
-            if completed.returncode == 0:
+            stderr_path.write_text("", encoding="utf-8")
+
+            with stdout_path.open("a", encoding="utf-8") as stdout_handle, stderr_path.open(
+                "a", encoding="utf-8"
+            ) as stderr_handle:
+                process = subprocess.Popen(
+                    command,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    text=True,
+                )
+                try:
+                    return_code = process.wait(timeout=timeout_seconds)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                    last_error = (
+                        f"JMeter execution timed out for {test.test_name} after {timeout_seconds} seconds"
+                    )
+                    stderr_handle.write(last_error + "\n")
+                    if attempt < max_attempts:
+                        time.sleep(min(attempt, 3))
+                    continue
+                except KeyboardInterrupt:
+                    # Ensure the JMeter subprocess is not orphaned when the operator interrupts the runner.
+                    process.kill()
+                    process.wait()
+                    stderr_handle.write("Runner interrupted by operator (Ctrl+C).\n")
+                    raise
+
+            if return_code == 0:
                 return CommandResult(result_file=result_file, stdout_path=stdout_path, stderr_path=stderr_path)
-            last_error = f"JMeter execution failed for {test.test_name} with exit code {completed.returncode}"
+
+            last_error = f"JMeter execution failed for {test.test_name} with exit code {return_code}"
             if attempt < max_attempts:
                 time.sleep(min(attempt, 3))
+
         raise RuntimeError(last_error)
 
 
@@ -107,7 +136,7 @@ class VmRunner:
             request = RunRequest.from_dict(json.loads(run_paths.manifest_path.read_text(encoding="utf-8")))
             try:
                 self._process_run(run_paths, request, status_payload)
-            except Exception as exc:
+            except BaseException as exc:
                 self._logger.exception("Run processing failed", extra={"run_id": run_paths.run_id})
                 status_payload = read_status(run_paths)
                 if status_payload.get("state") != "failed":
@@ -120,6 +149,8 @@ class VmRunner:
                         status_payload["failure_classification"] = "execution"
                     status_payload["failure_reason"] = str(exc)
                     write_status(run_paths, status_payload)
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
             return run_paths.run_id
         return None
 
