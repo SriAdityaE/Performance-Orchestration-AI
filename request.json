@@ -1,8 +1,8 @@
 {
   "tests": [
     {
-      "test_name": "baseline",
-      "environment_label": "vm",
+      "test_name": "Inspect_Load test",
+      "environment_label": "PRD-VM",
       "test_plan_path": "L:/MCP/AI/Performance-Orchestration-AI/SDD-project/tests/load_test.jmx",
       "user_count": 100,
       "ramp_up_seconds": 30,

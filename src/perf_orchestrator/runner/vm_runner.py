@@ -154,7 +154,7 @@ class VmRunner:
                     event_type="test_started",
                     run_id=run_paths.run_id,
                     test_name=test.test_name,
-                    message=f"{test.test_name} started",
+                    message=f"{test.test_name} - JMETER started",
                     details={"environment": test.environment_label, "index": index},
                 ),
             )
