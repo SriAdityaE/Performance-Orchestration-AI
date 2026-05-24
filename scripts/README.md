@@ -2,41 +2,26 @@
 
 ## VM Runner
 
-Run continuously:
+Run continuously with defaults:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-VmRunner.ps1 `
-  -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" `
-  -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" `
-  -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" `
-  -NotificationChannel slack `
-  -SlackWebhookUrl "https://hooks.slack.com/services/REPLACE/ME"
+.\Start-VmRunner.ps1
 ```
 
 Run once:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-VmRunner.ps1 `
-  -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" `
-  -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" `
-  -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" `
-  -NotificationChannel slack `
-  -SlackWebhookUrl "https://hooks.slack.com/services/REPLACE/ME" `
-  -Once
+.\Start-VmRunner.ps1 -Once
 ```
 
 ## Local Submit
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-LocalSubmit.ps1 `
-  -ProjectRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project" `
-  -PerfSharedRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project\shared-root" `
-  -RequestFile "request.json" `
-  -NotificationChannel terminal
+.\Start-LocalSubmit.ps1
 ```
 
 ## Notes
 
 - Both sides must point to the same physical shared-root storage.
-- The local submit script sets `JMETER_HOME` to project root by default for local validation.
-- Use `terminal` channel locally and `slack` on VM by default.
+- The root-level wrappers resolve sensible defaults from the current checkout and environment.
+- Override `-JMeterHome`, `-PerfSharedRoot`, or `-NotificationChannel` only when the defaults do not fit the current machine.

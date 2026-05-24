@@ -5,8 +5,8 @@
 1. Log in to the VM.
 2. Connect the VM to VPN if required.
 3. Build the Slack notifier artifact from the repository root.
-4. Ensure `PERF_SHARED_ROOT`, `JMETER_HOME`, `NOTIFICATION_CHANNEL`, and `SLACK_WEBHOOK_URL` are set correctly in the environment.
-5. Start the VM-side runner.
+4. Ensure `PERF_SHARED_ROOT`, `JMETER_HOME`, `NOTIFICATION_CHANNEL`, and `SLACK_WEBHOOK_URL` are set correctly in the environment when you need to override defaults.
+5. Start the VM-side runner with the one-line wrapper.
 6. Keep VM and local terminals separate; environment variables are session-scoped in PowerShell.
 
 ```powershell
@@ -17,28 +17,19 @@ npm run build:notifier
 
 The repository includes helper scripts to avoid repeating environment setup each run:
 
-- VM runner script: `scripts/Start-VmRunner.ps1`
-- Local submit script: `scripts/Start-LocalSubmit.ps1`
+- VM runner script: `Start-VmRunner.ps1`
+- Local submit script: `Start-LocalSubmit.ps1`
 
 VM runner (continuous mode):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-VmRunner.ps1 `
-   -ProjectRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project" `
-   -PerfSharedRoot "L:\MCP\AI\Performance-Orchestration-AI\SDD-project\shared-root" `
-   -JMeterHome "L:\apache-jmeter-5.5_New\apache-jmeter-5.5" `
-   -NotificationChannel slack `
-   -SlackWebhookUrl "https://hooks.slack.com/services/REPLACE/ME"
+.\Start-VmRunner.ps1
 ```
 
 Local submit:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Start-LocalSubmit.ps1 `
-   -ProjectRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project" `
-   -PerfSharedRoot "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project\shared-root" `
-   -RequestFile "request.json" `
-   -NotificationChannel terminal
+.\Start-LocalSubmit.ps1
 ```
 
 ## Start the VM-Side Runner

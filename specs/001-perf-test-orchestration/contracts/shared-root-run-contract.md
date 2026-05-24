@@ -60,8 +60,9 @@ Required top-level fields:
 
 ## Operational Notes
 
-- Operator shortcuts are provided by `scripts/Start-VmRunner.ps1` and `scripts/Start-LocalSubmit.ps1`.
-- `--request-file` must always include an explicit JSON file path.
+- Operator shortcuts are provided by `Start-VmRunner.ps1` and `Start-LocalSubmit.ps1` at the repository root, with implementations in `scripts/`.
+- The root-level wrappers resolve sensible defaults for the current checkout so operators can avoid repeating long parameter lists.
+- `--request-file` must always include an explicit JSON file path when using the Python CLI directly.
 - PowerShell environment variables are scoped to the current terminal session.
 
 ## Failure Classification Rules
