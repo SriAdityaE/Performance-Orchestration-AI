@@ -141,10 +141,7 @@ Minimal request example:
          "user_count": 100,
          "ramp_up_seconds": 30,
          "duration_minutes": 60,
-         "expected_throughput": 200.0,
-         "extra_args": {
-            "threads": "100"
-         }
+         "expected_throughput": 200.0
       }
    ],
    "notification": {

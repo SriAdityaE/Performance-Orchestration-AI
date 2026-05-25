@@ -289,7 +289,7 @@ class VmRunner:
             ),
         )
 
-        report_payload = self._build_report(completed_runs, request.notification.custom_report_format)
+        report_payload = self._build_report(run_paths, completed_runs, request.notification.custom_report_format)
         report_path = run_paths.reports_dir / "final_report.json"
         report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
 
@@ -315,16 +315,42 @@ class VmRunner:
 
     def _build_report(
         self,
+        run_paths: RunPaths,
         completed_runs: list[tuple[TestDefinition, dict[str, object]]],
         custom_format: dict[str, object] | None,
     ) -> dict[str, object]:
         if len(completed_runs) == 1:
             test, summary = completed_runs[0]
+            current_metrics = parse_metrics(summary["metrics"])
+            comparison_summary = None
+            best_run_recommendation = None
+            previous = self._find_previous_single_run_metrics(run_paths.run_id, test.test_name)
+            if previous:
+                previous_run_id, previous_metrics = previous
+                comparison_summary = self._comparator.compare(
+                    baseline_label=previous_run_id,
+                    baseline=previous_metrics,
+                    candidate_label=run_paths.run_id,
+                    candidate=current_metrics,
+                )
+                improvements = sum(1 for delta in comparison_summary.deltas if delta.classification == "improvement")
+                regressions = sum(1 for delta in comparison_summary.deltas if delta.classification == "regression")
+                if improvements > regressions:
+                    best_run_recommendation = f"Current run ({run_paths.run_id}) is preferred over baseline ({previous_run_id})."
+                elif regressions > improvements:
+                    best_run_recommendation = f"Baseline run ({previous_run_id}) remains preferred over current run ({run_paths.run_id})."
+                else:
+                    best_run_recommendation = (
+                        f"Current run ({run_paths.run_id}) and baseline ({previous_run_id}) are equivalent based on configured comparison rules."
+                    )
+
             return self._report_builder.build_single_run_report(
                 test_name=test.test_name,
                 environment_label=test.environment_label,
-                metrics=parse_metrics(summary["metrics"]),
+                metrics=current_metrics,
                 validation=parse_validation(summary["validation"]),
+                comparison_summary=comparison_summary,
+                best_run_recommendation=best_run_recommendation,
                 custom_format=custom_format,
             )
 
@@ -361,6 +387,39 @@ class VmRunner:
             status_payload["failure_reason"] = f"Notification failed for event {event.event_type}"
             write_status(run_paths, status_payload)
             raise
+
+    def _find_previous_single_run_metrics(
+        self,
+        current_run_id: str,
+        current_test_name: str,
+    ) -> tuple[str, object] | None:
+        for run_dir in sorted(self._settings.runs_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
+            if not run_dir.is_dir() or run_dir.name == current_run_id:
+                continue
+
+            status_path = run_dir / "status.json"
+            summary_path = run_dir / "reports" / "test_1_summary.json"
+            manifest_path = run_dir / "run_request.json"
+            if not status_path.exists() or not summary_path.exists() or not manifest_path.exists():
+                continue
+
+            status_payload = json.loads(status_path.read_text(encoding="utf-8"))
+            if status_payload.get("state") != "completed":
+                continue
+
+            manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            tests_payload = manifest_payload.get("tests", [])
+            if not tests_payload:
+                continue
+
+            previous_test_name = str(tests_payload[0].get("test_name", ""))
+            if previous_test_name != current_test_name:
+                continue
+
+            summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+            return run_dir.name, parse_metrics(summary_payload["metrics"])
+
+        return None
 
 
 def parse_metrics(payload: dict[str, object]):

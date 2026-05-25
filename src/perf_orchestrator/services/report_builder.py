@@ -13,13 +13,17 @@ class ReportBuilder:
         environment_label: str,
         metrics: TestMetrics,
         validation: ValidationResult,
+        comparison_summary: ComparisonSummary | None = None,
+        best_run_recommendation: str | None = None,
         custom_format: dict[str, object] | None = None,
     ) -> dict[str, object]:
-        architect_observations = self._build_architect_observations(
+        test_observations = self._build_test_observations(
             test_name=test_name,
             environment_label=environment_label,
             metrics=metrics,
             validation=validation,
+            comparison_summary=comparison_summary,
+            best_run_recommendation=best_run_recommendation,
         )
 
         base = {
@@ -28,6 +32,18 @@ class ReportBuilder:
                 "environment": environment_label,
                 "transactions": metrics.transactions,
                 "throughput": metrics.throughput,
+                "jmeter_aggregate": [
+                    {
+                        "label": "ALL",
+                        "samples": metrics.transactions,
+                        "average_ms": metrics.avg_response_ms,
+                        "p95_ms": metrics.p95_response_ms,
+                        "p99_ms": metrics.p99_response_ms,
+                        "max_ms": metrics.max_response_ms,
+                        "error_pct": metrics.error_rate_pct,
+                        "throughput_per_sec": metrics.throughput,
+                    }
+                ],
                 "response_times": {
                     "avg_ms": metrics.avg_response_ms,
                     "p95_ms": metrics.p95_response_ms,
@@ -42,7 +58,7 @@ class ReportBuilder:
                 "threshold_checks": validation.threshold_checks,
                 "target_checks": validation.target_checks,
             },
-            "Detailed Observations and Analysis": architect_observations,
+            "Detailed Observations and Analysis": test_observations,
         }
         return self._apply_custom_format(
             base,
@@ -146,13 +162,15 @@ class ReportBuilder:
 
         return dict(ordered)
 
-    def _build_architect_observations(
+    def _build_test_observations(
         self,
         *,
         test_name: str,
         environment_label: str,
         metrics: TestMetrics,
         validation: ValidationResult,
+        comparison_summary: ComparisonSummary | None,
+        best_run_recommendation: str | None,
     ) -> list[str]:
         summary = (
             f"Executive Summary: Run '{test_name}' on {environment_label} processed "
@@ -164,6 +182,14 @@ class ReportBuilder:
             f"max={metrics.max_response_ms:.2f} ms."
         )
         reliability = f"Reliability: error rate is {metrics.error_rate_pct:.2f}%."
+        tail_risk = (
+            f"Tail Latency Risk: p99={metrics.p99_response_ms:.2f} ms and max={metrics.max_response_ms:.2f} ms "
+            "indicate outlier response-time exposure under this workload."
+        )
+        max_impact = (
+            "Peak Response Impact: elevated max response time can cause intermittent user delays "
+            "even when average latency appears healthy."
+        )
 
         if validation.passed:
             decision = (
@@ -177,11 +203,32 @@ class ReportBuilder:
             )
 
         reasons = list(validation.reasons) or ["No threshold violations were reported."]
-        reason_lines = [f"Architect Finding: {reason}" for reason in reasons]
+        reason_lines = [f"Test Observation: {reason}" for reason in reasons]
+
+        comparison_lines: list[str] = []
+        if comparison_summary:
+            comparison_lines.append(
+                f"Historical Comparison: Baseline run '{comparison_summary.baseline_label}' vs current run '{comparison_summary.candidate_label}'."
+            )
+            comparison_lines.extend(
+                f"Test Observation: {observation}" for observation in comparison_summary.observations
+            )
+        if best_run_recommendation:
+            comparison_lines.append(f"Best Run Recommendation: {best_run_recommendation}")
 
         prompt_line = (
             "Analysis Prompt Used: You are a senior performance architect. Analyze the run metrics, "
             "identify business impact, and provide production-readiness guidance without requiring manual rewriting."
         )
 
-        return [summary, latency, reliability, *reason_lines, decision, prompt_line]
+        return [
+            summary,
+            latency,
+            reliability,
+            tail_risk,
+            max_impact,
+            *reason_lines,
+            *comparison_lines,
+            decision,
+            prompt_line,
+        ]

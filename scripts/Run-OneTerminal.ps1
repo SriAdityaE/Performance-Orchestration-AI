@@ -7,7 +7,7 @@ param(
     [ValidateSet("terminal", "slack", "teams", "both")]
     [string]$NotificationChannel = "slack",
     [string]$SlackWebhookUrl,
-    [switch]$KillPreviousProcesses,
+    [switch]$SkipProcessCleanup,
     [switch]$SkipQueueCleanup
 )
 
@@ -151,8 +151,8 @@ if (-not $SlackWebhookUrl) {
     $SlackWebhookUrl = $env:SLACK_WEBHOOK_URL
 }
 
-if ($KillPreviousProcesses) {
-        Stop-PreviousProcesses
+if (-not $SkipProcessCleanup) {
+    Stop-PreviousProcesses
 }
 
 if (-not $SkipQueueCleanup) {
