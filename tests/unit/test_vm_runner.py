@@ -47,12 +47,14 @@ def _make_fake_jmeter_home(base: Path) -> Path:
 
 def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     jmeter_home = _make_fake_jmeter_home(tmp_path)
+    external_logs_root = tmp_path / "external-testlogs"
     (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
     settings = load_settings(
         {
             "PERF_SHARED_ROOT": str(tmp_path),
             "JMETER_HOME": str(jmeter_home),
             "NOTIFICATION_CHANNEL": "terminal",
+            "TEST_LOG_ROOT": str(external_logs_root),
         }
     )
     request = RunRequest(
@@ -91,6 +93,9 @@ def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     assert jtl_path.parent.name == run_slot
     assert jtl_path.parent.parent.name == status_payload["execution_date_bucket"]
     assert Path(status_payload["tests"][0]["summary_path"]).exists()
+    assert "external_testlogs_dir" in status_payload
+    assert Path(status_payload["tests"][0]["external_testlogs_slot"]).exists()
+    assert Path(status_payload["external_final_report_path"]).exists()
     assert [event.event_type for event in notifier.events] == [
         "test_started",
         "test_ended",

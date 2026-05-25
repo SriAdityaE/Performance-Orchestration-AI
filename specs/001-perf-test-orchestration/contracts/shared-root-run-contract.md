@@ -61,11 +61,13 @@ Required top-level fields:
 9. A latest compatibility copy is also written to `reports/final_report.json`.
 10. `final_report_ready` event details include `report_path`, `report_latest_path`, `report_payload`, and `custom_report_format`.
 11. Local and VM `PERF_SHARED_ROOT` values may differ as paths, but they must map to the same physical shared storage.
-12. For single-run reports, `report_payload["Test Summary"]` includes transaction-level fields derived from parsed JTL labels:
+12. Local submit wrapper archives existing queued request pointers by default before enqueueing a new run; this can be bypassed with `-SkipQueueCleanup` when FIFO queue processing is required.
+13. VM runner mirrors JTL and report backup files to `TEST_LOG_ROOT` when that path is available (default target: `L:\testlogs`).
+14. For single-run reports, `report_payload["Test Summary"]` includes transaction-level fields derived from parsed JTL labels:
   - `transactions_detected`
   - `transaction_names`
   - `jmeter_aggregate` rows with one entry per discovered label plus `TOTAL`
-13. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
+15. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
 
 ## Operational Notes
 

@@ -5,6 +5,7 @@ param(
     [string]$JMeterHome,
     [ValidateSet("terminal", "slack", "teams", "both")]
     [string]$NotificationChannel = "terminal",
+    [switch]$SkipQueueCleanup,
     [switch]$Watch,
     [int]$PollSeconds = 3,
     [int]$WatchTimeoutSeconds = 1800
@@ -32,6 +33,27 @@ if (-not (Test-Path $resolvedRequestFile)) {
 }
 
 New-Item -ItemType Directory -Path $PerfSharedRoot -Force | Out-Null
+
+function Reset-RequestQueue {
+    param(
+        [string]$PerfSharedRoot
+    )
+
+    $requestsDir = Join-Path $PerfSharedRoot "requests"
+    if (-not (Test-Path $requestsDir)) {
+        New-Item -ItemType Directory -Path $requestsDir -Force | Out-Null
+        return
+    }
+
+    $staleDir = Join-Path $requestsDir "stale"
+    New-Item -ItemType Directory -Path $staleDir -Force | Out-Null
+
+    $pointers = Get-ChildItem $requestsDir -File -Filter "*.json" -ErrorAction SilentlyContinue
+    if ($pointers.Count -gt 0) {
+        $pointers | Move-Item -Destination $staleDir -Force
+        Write-Host "Archived $($pointers.Count) existing request pointer(s) to $staleDir" -ForegroundColor Yellow
+    }
+}
 
 function Watch-RunStatus {
     param(
@@ -93,6 +115,10 @@ try {
     $env:PERF_SHARED_ROOT = $PerfSharedRoot
     $env:JMETER_HOME = $JMeterHome
     $env:NOTIFICATION_CHANNEL = $NotificationChannel
+
+    if (-not $SkipQueueCleanup) {
+        Reset-RequestQueue -PerfSharedRoot $PerfSharedRoot
+    }
 
     Write-Host "Submitting request from: $resolvedRequestFile"
     Write-Host "PERF_SHARED_ROOT: $env:PERF_SHARED_ROOT"

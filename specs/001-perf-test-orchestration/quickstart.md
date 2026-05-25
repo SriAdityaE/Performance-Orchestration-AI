@@ -5,7 +5,7 @@
 1. Log in to the VM.
 2. Connect the VM to VPN if required.
 3. Build the Slack notifier artifact from the repository root.
-4. Ensure `PERF_SHARED_ROOT`, `JMETER_HOME`, `NOTIFICATION_CHANNEL`, and `SLACK_WEBHOOK_URL` are set correctly in the environment when you need to override defaults.
+4. Ensure `PERF_SHARED_ROOT`, `JMETER_HOME`, `NOTIFICATION_CHANNEL`, `SLACK_WEBHOOK_URL`, and optional `TEST_LOG_ROOT` are set correctly in the environment when you need to override defaults.
 5. Start the VM-side runner with the one-line wrapper.
 6. Keep VM and local terminals separate; environment variables are session-scoped in PowerShell.
 
@@ -32,6 +32,8 @@ Local submit:
 ```powershell
 .\Start-LocalSubmit.ps1
 ```
+
+By default, local submit archives existing queued request pointers before creating a new one (fresh-queue behavior). Use `-SkipQueueCleanup` only when you intentionally want FIFO queue processing.
 
 Local submit with status watch (when local can access the same shared-root):
 
@@ -168,6 +170,7 @@ Minimal request example:
 - Confirm per-test report backups are created under `reports/<DD-MM(MMM-Do)>/Run<index>_<YYYYMMDD-HHMMSS>/summary.json`.
 - Confirm timestamped final report backups are created under `reports/<DD-MM(MMM-Do)>/final_report_<YYYYMMDD-HHMMSS>.json`.
 - Confirm `reports/final_report.json` is updated as the latest compatibility copy.
+- Confirm external backup files are written under `TEST_LOG_ROOT` (default `L:\testlogs`) using run/date/run-slot folders.
 
 ## Local Verification Gate (Before Push)
 

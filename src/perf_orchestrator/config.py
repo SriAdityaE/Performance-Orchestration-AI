@@ -41,6 +41,7 @@ class Settings:
     jmeter_home: Path
     slack_webhook_url: str | None
     teams_webhook_url: str | None
+    test_logs_root: Path | None = None
     retry_policy: RetryPolicy = RetryPolicy()
     timeout_policy: TimeoutPolicy = TimeoutPolicy()
     thresholds: ValidationThresholds = ValidationThresholds()
@@ -61,6 +62,19 @@ def _require_path(name: str, raw_value: str | None) -> Path:
     path = Path(raw_value).expanduser()
     if not path.exists():
         raise ConfigError(f"Configured path for {name} does not exist: {path}")
+    return path
+
+
+def _optional_writable_path(raw_value: str | None, *, default_value: str | None = None) -> Path | None:
+    candidate = (raw_value or "").strip() or (default_value or "").strip()
+    if not candidate:
+        return None
+
+    path = Path(candidate).expanduser()
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
     return path
 
 
@@ -86,6 +100,7 @@ def load_settings(
             raise ConfigError(f"JMETER_HOME is invalid. Missing executable: {jmeter_executable}")
     slack_webhook_url = source.get("SLACK_WEBHOOK_URL") or None
     teams_webhook_url = source.get("TEAMS_WEBHOOK_URL") or None
+    test_logs_root = _optional_writable_path(source.get("TEST_LOG_ROOT"), default_value="L:\\testlogs")
 
     if notification_channel in {"slack", "both"} and not slack_webhook_url:
         raise ConfigError("SLACK_WEBHOOK_URL is required when Slack notifications are enabled")
@@ -96,4 +111,5 @@ def load_settings(
         jmeter_home=jmeter_home,
         slack_webhook_url=slack_webhook_url,
         teams_webhook_url=teams_webhook_url,
+        test_logs_root=test_logs_root,
     )

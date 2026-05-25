@@ -5,6 +5,7 @@ param(
     [string]$JMeterHome,
     [ValidateSet("terminal", "slack", "teams", "both")]
     [string]$NotificationChannel = "terminal",
+    [switch]$SkipQueueCleanup,
     [switch]$Watch,
     [int]$PollSeconds = 3,
     [int]$WatchTimeoutSeconds = 1800
@@ -58,5 +59,5 @@ $resolvedRequestFile = if ([System.IO.Path]::IsPathRooted($RequestFile)) {
     Join-Path $ProjectRoot $RequestFile
 }
 
-& $targetScript -ProjectRoot $ProjectRoot -RequestFile $resolvedRequestFile -PerfSharedRoot $PerfSharedRoot -JMeterHome $JMeterHome -NotificationChannel $NotificationChannel -Watch:$Watch -PollSeconds $PollSeconds -WatchTimeoutSeconds $WatchTimeoutSeconds
+& $targetScript -ProjectRoot $ProjectRoot -RequestFile $resolvedRequestFile -PerfSharedRoot $PerfSharedRoot -JMeterHome $JMeterHome -NotificationChannel $NotificationChannel -SkipQueueCleanup:$SkipQueueCleanup -Watch:$Watch -PollSeconds $PollSeconds -WatchTimeoutSeconds $WatchTimeoutSeconds
 exit $LASTEXITCODE

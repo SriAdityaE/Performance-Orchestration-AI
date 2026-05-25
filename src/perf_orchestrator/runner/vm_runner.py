@@ -216,6 +216,10 @@ class VmRunner:
         execution_reports_dir = run_paths.reports_dir / date_bucket
         execution_artifacts_dir.mkdir(parents=True, exist_ok=True)
         execution_reports_dir.mkdir(parents=True, exist_ok=True)
+        external_run_dir: Path | None = None
+        if self._settings.test_logs_root:
+            external_run_dir = self._settings.test_logs_root / run_paths.run_id / date_bucket
+            external_run_dir.mkdir(parents=True, exist_ok=True)
 
         status_payload["state"] = "running"
         status_payload["started_at"] = run_started_at.isoformat()
@@ -223,6 +227,8 @@ class VmRunner:
         status_payload["execution_date_bucket"] = date_bucket
         status_payload["execution_artifacts_dir"] = str(execution_artifacts_dir)
         status_payload["execution_reports_dir"] = str(execution_reports_dir)
+        if external_run_dir:
+            status_payload["external_testlogs_dir"] = str(external_run_dir)
         write_status(run_paths, status_payload)
         self._logger.info("Run processing started", extra={"run_id": run_paths.run_id})
 
@@ -236,6 +242,10 @@ class VmRunner:
             test_reports_dir = execution_reports_dir / run_slot
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)
             test_reports_dir.mkdir(parents=True, exist_ok=True)
+            external_test_dir: Path | None = None
+            if external_run_dir:
+                external_test_dir = external_run_dir / run_slot
+                external_test_dir.mkdir(parents=True, exist_ok=True)
 
             tests_payload[index - 1]["state"] = "running"
             tests_payload[index - 1]["run_slot"] = run_slot
@@ -278,6 +288,8 @@ class VmRunner:
                 if parse_elapsed > self._settings.timeout_policy.parse_seconds:
                     raise TimeoutError("JMeter parse timeout exceeded")
                 validation = self._validator.validate(metrics, test.expected_throughput)
+                if external_test_dir:
+                    shutil.copy2(command_result.result_file, external_test_dir / command_result.result_file.name)
             except TimeoutError as exc:
                 tests_payload[index - 1]["state"] = "failed"
                 tests_payload[index - 1]["failure_classification"] = "parsing"
@@ -313,6 +325,8 @@ class VmRunner:
             summary_path.write_text(
                 json.dumps(summary, indent=2), encoding="utf-8"
             )
+            if external_test_dir:
+                shutil.copy2(summary_path, external_test_dir / "summary.json")
             # Keep canonical summary paths for compatibility with existing tooling.
             (run_paths.reports_dir / f"test_{index}_summary.json").write_text(
                 json.dumps(summary, indent=2), encoding="utf-8"
@@ -321,6 +335,8 @@ class VmRunner:
             tests_payload[index - 1]["validation_passed"] = validation.passed
             tests_payload[index - 1]["jtl_path"] = str(command_result.result_file)
             tests_payload[index - 1]["summary_path"] = str(summary_path)
+            if external_test_dir:
+                tests_payload[index - 1]["external_testlogs_slot"] = str(external_test_dir)
             tests_payload[index - 1]["run_slot_completed_at"] = datetime.now(UTC).isoformat()
             tests_payload[index - 1]["test_plan_path"] = str(test.test_plan_path)
             if not validation.passed:
@@ -357,12 +373,17 @@ class VmRunner:
         # Keep canonical final report path for compatibility with existing tooling.
         canonical_report_path = run_paths.reports_dir / "final_report.json"
         shutil.copy2(report_path, canonical_report_path)
+        if external_run_dir:
+            shutil.copy2(report_path, external_run_dir / report_path.name)
+            shutil.copy2(report_path, external_run_dir / "final_report.json")
 
         status_payload["state"] = "completed"
         status_payload["completed_at"] = datetime.now(UTC).isoformat()
         status_payload["tests"] = tests_payload
         status_payload["final_report_path"] = str(report_path)
         status_payload["final_report_latest_path"] = str(canonical_report_path)
+        if external_run_dir:
+            status_payload["external_final_report_path"] = str(external_run_dir / report_path.name)
         write_status(run_paths, status_payload)
         self._emit(
             run_paths,
