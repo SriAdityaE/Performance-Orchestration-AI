@@ -32,6 +32,44 @@ Local submit:
 .\Start-LocalSubmit.ps1
 ```
 
+## Recommended Runtime Workflow
+
+Use this sequence for consistent Slack lifecycle delivery:
+
+1. Open VM Window 1 and start the continuous runner.
+2. Open VM Window 2 and submit a fresh request.
+3. Monitor the latest run status and `events.jsonl` until `completed` or `failed`.
+4. If a previous run is already `failed`, submit a new request because failed runs are not reprocessed.
+
+VM Window 1:
+
+```powershell
+.\Start-VmRunner.ps1
+```
+
+VM Window 2:
+
+```powershell
+.\Start-LocalSubmit.ps1
+$latest = Get-ChildItem .\shared-root\runs -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Get-Content "$($latest.FullName)\status.json"
+if (Test-Path "$($latest.FullName)\events.jsonl") { Get-Content "$($latest.FullName)\events.jsonl" -Wait }
+```
+
+Manual Slack connectivity check:
+
+```powershell
+$payload = @{
+   event_type = "test_started"
+   run_id = "manual-slack-check"
+   message = "manual slack check"
+   test_name = "connectivity"
+   details = @{ environment = "vm"; index = 1 }
+   occurred_at = (Get-Date).ToUniversalTime().ToString("o")
+} | ConvertTo-Json -Compress
+$payload | node .\tools\slack-notifier\dist\cli.js
+```
+
 ## Start the VM-Side Runner
 
 ```powershell
@@ -98,3 +136,4 @@ Minimal request example:
 - Confirm Slack receives the approved lifecycle events and final report.
 - Confirm `events.jsonl` includes the same lifecycle sequence that appears in Slack.
 - Confirm both local and VM `PERF_SHARED_ROOT` values resolve to the same physical shared storage.
+- Confirm a fresh run is queued after runner restart; runner startup alone does not emit lifecycle events.

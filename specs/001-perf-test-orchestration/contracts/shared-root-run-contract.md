@@ -64,6 +64,8 @@ Required top-level fields:
 - The root-level wrappers resolve sensible defaults for the current checkout so operators can avoid repeating long parameter lists.
 - `--request-file` must always include an explicit JSON file path when using the Python CLI directly.
 - PowerShell environment variables are scoped to the current terminal session.
+- Runner startup by itself does not emit lifecycle notifications; lifecycle notifications begin only after a queued run enters processing.
+- Runs in `failed` state are not reprocessed and require a fresh submit.
 
 ## Failure Classification Rules
 
