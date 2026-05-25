@@ -100,6 +100,7 @@ An operator provides a custom reporting format for Slack delivery, and the syste
 - **FR-023**: The system MUST expose the configured retry and timeout policy used for execution, validation, and notification steps in run records, even if the initial policy values are finalized later.
 - **FR-024**: The default retry policy MUST retry VM-side runner startup once after an initial failure, MUST retry Slack notification delivery up to three times, and MUST avoid automatic re-execution of a completed performance test unless the operator explicitly requests a new run.
 - **FR-025**: The default timeout policy MUST fail prerequisite validation after 5 minutes, MUST fail VM-side runner startup after 10 minutes, MUST fail result parsing after 5 minutes, and MUST allow test execution to continue until the declared test duration plus a 15-minute completion buffer has elapsed.
+- **FR-026**: The system MUST support optional terminal-first status visibility by allowing operators to watch run state transitions and lifecycle events from the submit side when the submit environment can access the same physical shared-root storage.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -122,6 +123,7 @@ An operator provides a custom reporting format for Slack delivery, and the syste
 - **SC-004**: For 100% of completed runs, reviewers can trace the final reported outcome back to the originating request, stored artifacts, execution target, and run status history.
 - **SC-005**: When custom reporting instructions are supplied, 100% of successful Slack notifications follow only the requested format; when custom instructions are absent, 100% of successful Slack notifications use the standard structured performance summary.
 - **SC-006**: For 100% of completed runs without approved threshold overrides, the system evaluates the run against the default thresholds for error rate, P95, P99, and throughput and records the outcome in the final report.
+- **SC-007**: For environments where submit and runner share physical shared-root access, operators can observe status transitions (`queued_for_vm_runner`, `running`, terminal state) and emitted lifecycle events from submit-side terminal output in at least 95% of validation runs.
 
 ## Assumptions
 

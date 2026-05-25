@@ -19,6 +19,7 @@ The repository includes helper scripts to avoid repeating environment setup each
 
 - VM runner script: `Start-VmRunner.ps1`
 - Local submit script: `Start-LocalSubmit.ps1`
+- One-terminal VM workflow: `scripts/Run-OneTerminal.ps1`
 
 VM runner (continuous mode):
 
@@ -30,6 +31,12 @@ Local submit:
 
 ```powershell
 .\Start-LocalSubmit.ps1
+```
+
+Local submit with status watch (when local can access the same shared-root):
+
+```powershell
+.\Start-LocalSubmit.ps1 -Watch -PollSeconds 3 -WatchTimeoutSeconds 1800
 ```
 
 ## Recommended Runtime Workflow
@@ -54,6 +61,13 @@ VM Window 2:
 $latest = Get-ChildItem .\shared-root\runs -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 Get-Content "$($latest.FullName)\status.json"
 if (Test-Path "$($latest.FullName)\events.jsonl") { Get-Content "$($latest.FullName)\events.jsonl" -Wait }
+```
+
+Single-terminal VM workflow:
+
+```powershell
+Set-Location .\scripts
+.\Run-OneTerminal.ps1 -NotificationChannel terminal
 ```
 
 Manual Slack connectivity check:
@@ -137,3 +151,4 @@ Minimal request example:
 - Confirm `events.jsonl` includes the same lifecycle sequence that appears in Slack.
 - Confirm both local and VM `PERF_SHARED_ROOT` values resolve to the same physical shared storage.
 - Confirm a fresh run is queued after runner restart; runner startup alone does not emit lifecycle events.
+- Confirm local `-Watch` mode is only used when local can read the same shared-root as VM.

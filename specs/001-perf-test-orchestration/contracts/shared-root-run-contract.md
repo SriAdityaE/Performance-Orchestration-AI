@@ -61,11 +61,13 @@ Required top-level fields:
 ## Operational Notes
 
 - Operator shortcuts are provided by `Start-VmRunner.ps1` and `Start-LocalSubmit.ps1` at the repository root, with implementations in `scripts/`.
+- A single-terminal VM shortcut is provided by `scripts/Run-OneTerminal.ps1` for submit + process + status output in one terminal session.
 - The root-level wrappers resolve sensible defaults for the current checkout so operators can avoid repeating long parameter lists.
 - `--request-file` must always include an explicit JSON file path when using the Python CLI directly.
 - PowerShell environment variables are scoped to the current terminal session.
 - Runner startup by itself does not emit lifecycle notifications; lifecycle notifications begin only after a queued run enters processing.
 - Runs in `failed` state are not reprocessed and require a fresh submit.
+- Local watch mode (`Start-LocalSubmit.ps1 -Watch`) requires local access to the same physical shared-root used by VM.
 
 ## Failure Classification Rules
 
