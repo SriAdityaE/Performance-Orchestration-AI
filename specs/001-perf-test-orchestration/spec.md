@@ -102,6 +102,7 @@ An operator provides a custom reporting format for Slack delivery, and the syste
 - **FR-025**: The default timeout policy MUST fail prerequisite validation after 5 minutes, MUST fail VM-side runner startup after 10 minutes, MUST fail result parsing after 5 minutes, and MUST allow test execution to continue until the declared test duration plus a 15-minute completion buffer has elapsed.
 - **FR-026**: The system MUST support optional terminal-first status visibility by allowing operators to watch run state transitions and lifecycle events from the submit side when the submit environment can access the same physical shared-root storage.
 - **FR-027**: Any script change MUST pass local PowerShell parse checks and targeted unit tests before commit/push, and the successful validation output MUST be available in terminal history for auditability.
+- **FR-028**: The one-terminal VM command (`scripts/Run-OneTerminal.ps1`) MUST send a startup Slack notification by default when notification channel is `slack` or `both`, before submitting and processing the run.
 
 ### Key Entities *(include if feature involves data)*
 

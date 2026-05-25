@@ -70,6 +70,13 @@ Set-Location .\scripts
 .\Run-OneTerminal.ps1 -NotificationChannel terminal
 ```
 
+For demo/default Slack behavior with startup notification and lifecycle notifications:
+
+```powershell
+Set-Location .\scripts
+.\Run-OneTerminal.ps1
+```
+
 Manual Slack connectivity check:
 
 ```powershell
