@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from perf_orchestrator.config import load_settings
@@ -80,3 +81,41 @@ def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
         "report_preparation_in_progress",
         "final_report_ready",
     ]
+
+
+def test_vm_runner_archives_stale_queued_request(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+    request = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="baseline",
+                environment_label="vm",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=10,
+                ramp_up_seconds=5,
+                duration_minutes=1,
+            ),
+        )
+    )
+    result = LocalOrchestrator(settings=settings, notifier=RecordingNotifier()).start(request)
+
+    status_payload = json.loads(result.run_paths.status_path.read_text(encoding="utf-8"))
+    status_payload["queued_for_vm_runner_at"] = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    result.run_paths.status_path.write_text(json.dumps(status_payload, indent=2), encoding="utf-8")
+
+    runner = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed_run_id = runner.process_next_run()
+
+    assert processed_run_id is None
+    updated_status = json.loads(result.run_paths.status_path.read_text(encoding="utf-8"))
+    assert updated_status["state"] == "failed"
+    assert updated_status["failure_reason"] == "VM runner startup timeout exceeded"
+    assert not (settings.requests_dir / f"{result.run_paths.run_id}.json").exists()
+    assert (settings.requests_dir / "stale" / f"{result.run_paths.run_id}.json").exists()

@@ -134,6 +134,7 @@ class VmRunner:
             run_paths = load_run_paths(self._settings, str(pointer_payload["run_id"]))
             status_payload = read_status(run_paths)
             if status_payload.get("state") != "queued_for_vm_runner":
+                self._archive_request_pointer(pointer_file)
                 continue
             if self._is_queue_timeout_exceeded(status_payload):
                 status_payload["state"] = "failed"
@@ -141,6 +142,7 @@ class VmRunner:
                 status_payload["failure_reason"] = "VM runner startup timeout exceeded"
                 write_status(run_paths, status_payload)
                 self._logger.error("VM runner startup timeout exceeded", extra={"run_id": run_paths.run_id})
+                self._archive_request_pointer(pointer_file)
                 continue
             request = RunRequest.from_dict(json.loads(run_paths.manifest_path.read_text(encoding="utf-8")))
             try:
@@ -160,8 +162,17 @@ class VmRunner:
                     write_status(run_paths, status_payload)
                 if isinstance(exc, KeyboardInterrupt):
                     raise
+            self._archive_request_pointer(pointer_file)
             return run_paths.run_id
         return None
+
+    def _archive_request_pointer(self, pointer_file: Path) -> None:
+        stale_dir = self._settings.requests_dir / "stale"
+        stale_dir.mkdir(parents=True, exist_ok=True)
+        target = stale_dir / pointer_file.name
+        if target.exists():
+            target.unlink()
+        pointer_file.replace(target)
 
     def _is_queue_timeout_exceeded(self, status_payload: dict[str, object]) -> bool:
         queued_at = status_payload.get("queued_for_vm_runner_at")
