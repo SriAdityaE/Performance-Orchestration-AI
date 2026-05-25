@@ -68,6 +68,7 @@ Required top-level fields:
 - Runner startup by itself does not emit lifecycle notifications; lifecycle notifications begin only after a queued run enters processing.
 - Runs in `failed` state are not reprocessed and require a fresh submit.
 - Local watch mode (`Start-LocalSubmit.ps1 -Watch`) requires local access to the same physical shared-root used by VM.
+- Before committing or pushing script changes, operators must run local script parse checks and targeted unit tests and confirm success.
 
 ## Failure Classification Rules
 

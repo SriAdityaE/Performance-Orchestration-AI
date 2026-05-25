@@ -114,7 +114,7 @@ Minimal request example:
       {
          "test_name": "baseline",
          "environment_label": "vm",
-         "test_plan_path": "L:/MCP/AI/Performance-Orchestration-AI/SDD-project/tests/load_test.jmx",
+         "test_plan_path": "L:/Latest_Script_Sqlserver/Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
          "user_count": 100,
          "ramp_up_seconds": 30,
          "duration_minutes": 60,
@@ -152,3 +152,15 @@ Minimal request example:
 - Confirm both local and VM `PERF_SHARED_ROOT` values resolve to the same physical shared storage.
 - Confirm a fresh run is queued after runner restart; runner startup alone does not emit lifecycle events.
 - Confirm local `-Watch` mode is only used when local can read the same shared-root as VM.
+
+## Local Verification Gate (Before Push)
+
+Before committing or pushing any script changes, run local verification and keep the successful output in terminal history.
+
+```powershell
+Set-Location "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project"
+foreach ($file in @('scripts\\Run-OneTerminal.ps1','Start-LocalSubmit.ps1','scripts\\Start-LocalSubmit.ps1','Start-VmRunner.ps1','scripts\\Start-VmRunner.ps1')) { [void][scriptblock]::Create((Get-Content $file -Raw)); Write-Host "OK $file" }
+python -m pytest tests/unit/test_config.py tests/unit/test_vm_runner.py -q
+```
+
+Only push to git after the commands above succeed.
