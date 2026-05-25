@@ -70,6 +70,22 @@ Set-Location .\scripts
 .\Run-OneTerminal.ps1 -NotificationChannel terminal
 ```
 
+Default one-command demo workflow (recommended):
+
+```powershell
+Set-Location .\scripts
+.\Run-OneTerminal.ps1
+```
+
+`Run-OneTerminal.ps1` now performs all of the following automatically:
+
+- resolves project, shared-root, and JMeter paths
+- sets/overrides test plan path in runtime request payload
+- archives active queued request pointers before submit (fresh-start behavior)
+- optionally kills existing runner/JMeter processes when requested
+- sends startup Slack notification in `slack`/`both` mode
+- submits and processes one run, then prints final status/events
+
 For demo/default Slack behavior with startup notification and lifecycle notifications:
 
 ```powershell

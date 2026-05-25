@@ -3,9 +3,12 @@ param(
     [string]$RequestFile = "request.json",
     [string]$PerfSharedRoot,
     [string]$JMeterHome,
+    [string]$TestPlanPath = "L:\Latest_Script_Sqlserver\Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
     [ValidateSet("terminal", "slack", "teams", "both")]
     [string]$NotificationChannel = "slack",
-    [string]$SlackWebhookUrl
+    [string]$SlackWebhookUrl,
+    [switch]$KillPreviousProcesses,
+    [switch]$SkipQueueCleanup
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,6 +37,10 @@ if (-not (Test-Path $submitScript)) {
 }
 if (-not (Test-Path $runnerScript)) {
     throw "Missing runner script: $runnerScript"
+}
+
+if (-not (Test-Path $TestPlanPath)) {
+    throw "Configured TestPlanPath not found: $TestPlanPath"
 }
 
 function Send-StartupSlackNotification {
@@ -66,14 +73,103 @@ function Send-StartupSlackNotification {
     }
 }
 
+function Stop-PreviousProcesses {
+    Write-Host "Stopping previous runner/JMeter processes..." -ForegroundColor Yellow
+
+    $runnerProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+        Where-Object { $_.CommandLine -match "perf_orchestrator\.runner\.main" }
+    foreach ($proc in $runnerProcs) {
+        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+        Write-Host "Stopped runner process PID=$($proc.ProcessId)"
+    }
+
+    $jmeterJavaProcs = Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
+        Where-Object { $_.CommandLine -match "ApacheJMeter|jmeter" }
+    foreach ($proc in $jmeterJavaProcs) {
+        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+        Write-Host "Stopped JMeter java process PID=$($proc.ProcessId)"
+    }
+}
+
+function Reset-RequestQueue {
+    param(
+        [string]$PerfSharedRoot
+    )
+
+    $requestsDir = Join-Path $PerfSharedRoot "requests"
+    if (-not (Test-Path $requestsDir)) {
+        New-Item -ItemType Directory -Path $requestsDir -Force | Out-Null
+        return
+    }
+
+    $staleDir = Join-Path $requestsDir "stale"
+    New-Item -ItemType Directory -Path $staleDir -Force | Out-Null
+
+    $pointers = Get-ChildItem $requestsDir -File -Filter "*.json" -ErrorAction SilentlyContinue
+    if ($pointers.Count -gt 0) {
+        $pointers | Move-Item -Destination $staleDir -Force
+        Write-Host "Archived $($pointers.Count) request pointer(s) to $staleDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "No active request pointers to archive."
+    }
+}
+
+function Build-RunRequestFile {
+    param(
+        [string]$RequestFile,
+        [string]$ProjectRoot,
+        [string]$TestPlanPath,
+        [string]$NotificationChannel,
+        [string]$PerfSharedRoot
+    )
+
+    $resolvedRequestFile = if ([System.IO.Path]::IsPathRooted($RequestFile)) {
+        $RequestFile
+    } else {
+        Join-Path $ProjectRoot $RequestFile
+    }
+
+    if (-not (Test-Path $resolvedRequestFile)) {
+        throw "Request file not found: $resolvedRequestFile"
+    }
+
+    $payload = Get-Content $resolvedRequestFile -Raw | ConvertFrom-Json
+    foreach ($test in $payload.tests) {
+        $test.test_plan_path = ($TestPlanPath -replace "\\", "/")
+    }
+    $payload.notification.channel = $NotificationChannel
+
+    $runtimeDir = Join-Path $PerfSharedRoot "runtime"
+    New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+    $runtimeRequestFile = Join-Path $runtimeDir ("request-runtime-" + (Get-Date -Format "yyyyMMddHHmmss") + ".json")
+    $payload | ConvertTo-Json -Depth 20 | Set-Content $runtimeRequestFile
+
+    return $runtimeRequestFile
+}
+
 if (-not $SlackWebhookUrl) {
     $SlackWebhookUrl = $env:SLACK_WEBHOOK_URL
 }
 
+if ($KillPreviousProcesses) {
+        Stop-PreviousProcesses
+}
+
+if (-not $SkipQueueCleanup) {
+        Reset-RequestQueue -PerfSharedRoot $PerfSharedRoot
+}
+
+$runtimeRequestFile = Build-RunRequestFile `
+    -RequestFile $RequestFile `
+    -ProjectRoot $ProjectRoot `
+    -TestPlanPath $TestPlanPath `
+    -NotificationChannel $NotificationChannel `
+    -PerfSharedRoot $PerfSharedRoot
+
 Send-StartupSlackNotification `
   -WebhookUrl $SlackWebhookUrl `
   -ProjectRoot $ProjectRoot `
-  -RequestFile $RequestFile `
+    -RequestFile $runtimeRequestFile `
   -NotificationChannel $NotificationChannel
 
 function Send-SlackPreflightNotification {
@@ -112,7 +208,7 @@ Send-SlackPreflightNotification -ProjectRoot $ProjectRoot -NotificationChannel $
 Write-Host "[1/4] Submitting run request..." -ForegroundColor Cyan
 & $submitScript `
   -ProjectRoot $ProjectRoot `
-  -RequestFile $RequestFile `
+    -RequestFile $runtimeRequestFile `
   -PerfSharedRoot $PerfSharedRoot `
   -JMeterHome $JMeterHome `
   -NotificationChannel $NotificationChannel

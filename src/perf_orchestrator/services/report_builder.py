@@ -15,6 +15,13 @@ class ReportBuilder:
         validation: ValidationResult,
         custom_format: dict[str, object] | None = None,
     ) -> dict[str, object]:
+        architect_observations = self._build_architect_observations(
+            test_name=test_name,
+            environment_label=environment_label,
+            metrics=metrics,
+            validation=validation,
+        )
+
         base = {
             "Test Summary": {
                 "test_name": test_name,
@@ -35,7 +42,7 @@ class ReportBuilder:
                 "threshold_checks": validation.threshold_checks,
                 "target_checks": validation.target_checks,
             },
-            "Detailed Observations and Analysis": list(validation.reasons) or ["All validation thresholds passed"],
+            "Detailed Observations and Analysis": architect_observations,
         }
         return self._apply_custom_format(
             base,
@@ -138,3 +145,43 @@ class ReportBuilder:
                 ordered[alias] = value
 
         return dict(ordered)
+
+    def _build_architect_observations(
+        self,
+        *,
+        test_name: str,
+        environment_label: str,
+        metrics: TestMetrics,
+        validation: ValidationResult,
+    ) -> list[str]:
+        summary = (
+            f"Executive Summary: Run '{test_name}' on {environment_label} processed "
+            f"{metrics.transactions} transactions with throughput {metrics.throughput:.2f}/s."
+        )
+        latency = (
+            f"Latency Profile: avg={metrics.avg_response_ms:.2f} ms, "
+            f"p95={metrics.p95_response_ms:.2f} ms, p99={metrics.p99_response_ms:.2f} ms, "
+            f"max={metrics.max_response_ms:.2f} ms."
+        )
+        reliability = f"Reliability: error rate is {metrics.error_rate_pct:.2f}%."
+
+        if validation.passed:
+            decision = (
+                "Stakeholder Decision: Validation passed. Recommendation is to proceed to next stage "
+                "while continuing normal trend monitoring."
+            )
+        else:
+            decision = (
+                "Stakeholder Decision: Validation failed. Recommendation is to hold release for this scope "
+                "until regressions are triaged and corrected."
+            )
+
+        reasons = list(validation.reasons) or ["No threshold violations were reported."]
+        reason_lines = [f"Architect Finding: {reason}" for reason in reasons]
+
+        prompt_line = (
+            "Analysis Prompt Used: You are a senior performance architect. Analyze the run metrics, "
+            "identify business impact, and provide production-readiness guidance without requiring manual rewriting."
+        )
+
+        return [summary, latency, reliability, *reason_lines, decision, prompt_line]
