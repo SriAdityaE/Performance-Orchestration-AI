@@ -26,6 +26,15 @@ class CommandResult:
     stderr_path: Path
 
 
+def _read_log_tail(path: Path, max_lines: int = 20) -> str:
+    if not path.exists():
+        return "<missing log file>"
+    content = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    if not content:
+        return "<empty log file>"
+    return "\n".join(content[-max_lines:])
+
+
 class JMeterCommandRunner:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -192,6 +201,15 @@ class VmRunner:
 
             try:
                 command_result = self._command_runner.run(run_paths, test, index)
+                if not command_result.result_file.exists():
+                    stdout_tail = _read_log_tail(command_result.stdout_path)
+                    stderr_tail = _read_log_tail(command_result.stderr_path)
+                    raise RuntimeError(
+                        "JMeter finished without creating result file: "
+                        f"{command_result.result_file}\n"
+                        f"stdout tail:\n{stdout_tail}\n"
+                        f"stderr tail:\n{stderr_tail}"
+                    )
                 parse_start = time.monotonic()
                 metrics = parse_jmeter_csv(command_result.result_file, test.duration_minutes)
                 parse_elapsed = time.monotonic() - parse_start
