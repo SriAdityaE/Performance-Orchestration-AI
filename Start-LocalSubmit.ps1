@@ -4,7 +4,10 @@ param(
     [string]$PerfSharedRoot,
     [string]$JMeterHome,
     [ValidateSet("terminal", "slack", "teams", "both")]
-    [string]$NotificationChannel = "terminal"
+    [string]$NotificationChannel = "terminal",
+    [switch]$Watch,
+    [int]$PollSeconds = 3,
+    [int]$WatchTimeoutSeconds = 1800
 )
 
 $targetScript = Join-Path $PSScriptRoot "scripts\Start-LocalSubmit.ps1"
@@ -55,5 +58,5 @@ $resolvedRequestFile = if ([System.IO.Path]::IsPathRooted($RequestFile)) {
     Join-Path $ProjectRoot $RequestFile
 }
 
-& $targetScript -ProjectRoot $ProjectRoot -RequestFile $resolvedRequestFile -PerfSharedRoot $PerfSharedRoot -JMeterHome $JMeterHome -NotificationChannel $NotificationChannel
+& $targetScript -ProjectRoot $ProjectRoot -RequestFile $resolvedRequestFile -PerfSharedRoot $PerfSharedRoot -JMeterHome $JMeterHome -NotificationChannel $NotificationChannel -Watch:$Watch -PollSeconds $PollSeconds -WatchTimeoutSeconds $WatchTimeoutSeconds
 exit $LASTEXITCODE

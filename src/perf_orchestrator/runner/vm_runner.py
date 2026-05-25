@@ -199,6 +199,10 @@ class VmRunner:
         for index, test in enumerate(request.tests, start=1):
             tests_payload[index - 1]["state"] = "running"
             write_status(run_paths, {**status_payload, "tests": tests_payload})
+
+            if not test.test_plan_path.exists():
+                raise RuntimeError(f"JMeter test plan not found: {test.test_plan_path}")
+
             self._emit(
                 run_paths,
                 LifecycleEvent(

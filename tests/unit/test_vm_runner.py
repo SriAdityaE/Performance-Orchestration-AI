@@ -44,6 +44,7 @@ def _make_fake_jmeter_home(base: Path) -> Path:
 
 def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
     settings = load_settings(
         {
             "PERF_SHARED_ROOT": str(tmp_path),

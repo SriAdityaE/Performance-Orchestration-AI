@@ -42,11 +42,50 @@ Submit + process + print final status/events in a single terminal:
 
 By default, this command runs in `slack` mode and sends a startup Slack notification before submit/processing.
 It then sends normal lifecycle notifications during run processing.
+It also performs fresh-start queue cleanup, creates a runtime request payload, and enforces a known-good test plan path.
+
+Optional process cleanup for stale runner/JMeter processes before run:
+
+```powershell
+.\Run-OneTerminal.ps1 -KillPreviousProcesses
+```
+
+Skip queue cleanup when you explicitly want to preserve queued pointers:
+
+```powershell
+.\Run-OneTerminal.ps1 -SkipQueueCleanup
+```
+
+Override test plan path for a different demo script:
+
+```powershell
+.\Run-OneTerminal.ps1 -TestPlanPath "L:\Latest_Script_Sqlserver\MyOtherPlan.jmx"
+```
 
 For terminal-only lifecycle output (no Slack popups):
 
 ```powershell
 .\Run-OneTerminal.ps1 -NotificationChannel terminal
+```
+
+## Reset Previous Runs (VM)
+
+Archive previous request pointers and old run folders before a fresh demo run:
+
+```powershell
+.\Reset-RunQueue.ps1
+```
+
+Keep latest 1 run and archive everything else:
+
+```powershell
+.\Reset-RunQueue.ps1 -KeepLatestRuns 1
+```
+
+Delete mode (destructive):
+
+```powershell
+.\Reset-RunQueue.ps1 -DeleteInsteadOfArchive
 ```
 
 ## Notes

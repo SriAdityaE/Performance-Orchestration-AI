@@ -3,7 +3,7 @@
     {
       "test_name": "Inspect_Load test",
       "environment_label": "PRD-VM",
-      "test_plan_path": "L:/MCP/AI/Performance-Orchestration-AI/SDD-project/tests/load_test.jmx",
+      "test_plan_path": "L:/Latest_Script_Sqlserver/Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
       "user_count": 100,
       "ramp_up_seconds": 30,
       "duration_minutes": 5,
