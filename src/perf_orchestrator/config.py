@@ -64,7 +64,11 @@ def _require_path(name: str, raw_value: str | None) -> Path:
     return path
 
 
-def load_settings(env: dict[str, str] | None = None) -> Settings:
+def load_settings(
+    env: dict[str, str] | None = None,
+    *,
+    validate_jmeter_executable: bool = True,
+) -> Settings:
     source = env if env is not None else os.environ
 
     notification_channel = source.get("NOTIFICATION_CHANNEL", "slack").strip().lower()
@@ -76,9 +80,10 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
 
     perf_shared_root = _require_path("PERF_SHARED_ROOT", source.get("PERF_SHARED_ROOT"))
     jmeter_home = _require_path("JMETER_HOME", source.get("JMETER_HOME"))
-    jmeter_executable = jmeter_home / "bin" / "jmeter.bat"
-    if not jmeter_executable.exists():
-        raise ConfigError(f"JMETER_HOME is invalid. Missing executable: {jmeter_executable}")
+    if validate_jmeter_executable:
+        jmeter_executable = jmeter_home / "bin" / "jmeter.bat"
+        if not jmeter_executable.exists():
+            raise ConfigError(f"JMETER_HOME is invalid. Missing executable: {jmeter_executable}")
     slack_webhook_url = source.get("SLACK_WEBHOOK_URL") or None
     teams_webhook_url = source.get("TEAMS_WEBHOOK_URL") or None
 

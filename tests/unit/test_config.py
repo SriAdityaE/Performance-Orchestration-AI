@@ -39,3 +39,17 @@ def test_load_settings_accepts_terminal_channel_without_webhook(tmp_path: Path) 
     assert settings.notification_channel == "terminal"
     assert settings.requests_dir == tmp_path / "requests"
     assert settings.runs_dir == tmp_path / "runs"
+
+
+def test_load_settings_can_skip_jmeter_executable_validation(tmp_path: Path) -> None:
+    jmeter_home = tmp_path / "jmeter"
+    jmeter_home.mkdir(parents=True, exist_ok=True)
+    env = {
+        "PERF_SHARED_ROOT": str(tmp_path),
+        "JMETER_HOME": str(jmeter_home),
+        "NOTIFICATION_CHANNEL": "terminal",
+    }
+
+    settings = load_settings(env, validate_jmeter_executable=False)
+
+    assert settings.jmeter_home == jmeter_home

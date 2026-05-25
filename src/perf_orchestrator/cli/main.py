@@ -24,7 +24,7 @@ def _load_request(path: Path) -> RunRequest:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
-        settings = load_settings()
+        settings = load_settings(validate_jmeter_executable=False)
         request = _load_request(args.request_file)
         result = LocalOrchestrator(settings=settings).start(request)
     except (ConfigError, OSError, ValueError) as exc:
