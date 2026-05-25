@@ -20,6 +20,20 @@ Run once:
 .\Start-LocalSubmit.ps1
 ```
 
+## One-Terminal VM Workflow
+
+Submit + process + print final status/events in a single terminal:
+
+```powershell
+.\Run-OneTerminal.ps1
+```
+
+For terminal-only lifecycle output (no Slack popups):
+
+```powershell
+.\Run-OneTerminal.ps1 -NotificationChannel terminal
+```
+
 ## Notes
 
 - Both sides must point to the same physical shared-root storage.
