@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
+import shutil
 import subprocess
 import time
 
@@ -35,12 +36,32 @@ def _read_log_tail(path: Path, max_lines: int = 20) -> str:
     return "\n".join(content[-max_lines:])
 
 
+def _ordinal_suffix(day: int) -> str:
+    if 11 <= day % 100 <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+
+def _format_date_bucket(dt: datetime) -> str:
+    day = dt.day
+    return f"{dt.strftime('%d-%m')}({dt.strftime('%b')}-{day}{_ordinal_suffix(day)})"
+
+
 class JMeterCommandRunner:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def run(self, run_paths: RunPaths, test: TestDefinition, test_index: int) -> CommandResult:
-        result_file = run_paths.artifacts_dir / f"test_{test_index}.jtl"
+    def run(
+        self,
+        run_paths: RunPaths,
+        test: TestDefinition,
+        test_index: int,
+        *,
+        results_dir: Path | None = None,
+    ) -> CommandResult:
+        output_dir = results_dir or run_paths.artifacts_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        result_file = output_dir / f"test_{test_index}.jtl"
         stdout_path = run_paths.logs_dir / f"test_{test_index}.stdout.log"
         stderr_path = run_paths.logs_dir / f"test_{test_index}.stderr.log"
         command = [
@@ -188,8 +209,20 @@ class VmRunner:
         request: RunRequest,
         status_payload: dict[str, object],
     ) -> None:
+        run_started_at = datetime.now(UTC)
+        execution_stamp = run_started_at.strftime("%Y%m%d-%H%M%S")
+        date_bucket = _format_date_bucket(run_started_at)
+        execution_artifacts_dir = run_paths.artifacts_dir / "jtl" / date_bucket
+        execution_reports_dir = run_paths.reports_dir / date_bucket
+        execution_artifacts_dir.mkdir(parents=True, exist_ok=True)
+        execution_reports_dir.mkdir(parents=True, exist_ok=True)
+
         status_payload["state"] = "running"
-        status_payload["started_at"] = datetime.now(UTC).isoformat()
+        status_payload["started_at"] = run_started_at.isoformat()
+        status_payload["execution_stamp"] = execution_stamp
+        status_payload["execution_date_bucket"] = date_bucket
+        status_payload["execution_artifacts_dir"] = str(execution_artifacts_dir)
+        status_payload["execution_reports_dir"] = str(execution_reports_dir)
         write_status(run_paths, status_payload)
         self._logger.info("Run processing started", extra={"run_id": run_paths.run_id})
 
@@ -197,7 +230,16 @@ class VmRunner:
         tests_payload: list[dict[str, object]] = list(status_payload["tests"])
 
         for index, test in enumerate(request.tests, start=1):
+            test_stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+            run_slot = f"Run{index}_{test_stamp}"
+            test_artifacts_dir = execution_artifacts_dir / run_slot
+            test_reports_dir = execution_reports_dir / run_slot
+            test_artifacts_dir.mkdir(parents=True, exist_ok=True)
+            test_reports_dir.mkdir(parents=True, exist_ok=True)
+
             tests_payload[index - 1]["state"] = "running"
+            tests_payload[index - 1]["run_slot"] = run_slot
+            tests_payload[index - 1]["run_slot_started_at"] = datetime.now(UTC).isoformat()
             write_status(run_paths, {**status_payload, "tests": tests_payload})
 
             if not test.test_plan_path.exists():
@@ -215,7 +257,12 @@ class VmRunner:
             )
 
             try:
-                command_result = self._command_runner.run(run_paths, test, index)
+                command_result = self._command_runner.run(
+                    run_paths,
+                    test,
+                    index,
+                    results_dir=test_artifacts_dir,
+                )
                 if not command_result.result_file.exists():
                     stdout_tail = _read_log_tail(command_result.stdout_path)
                     stderr_tail = _read_log_tail(command_result.stderr_path)
@@ -259,12 +306,23 @@ class VmRunner:
                     "target_checks": validation.target_checks,
                 },
                 "result_file": str(command_result.result_file),
+                "test_plan_path": str(test.test_plan_path),
+                "run_slot": run_slot,
             }
+            summary_path = test_reports_dir / "summary.json"
+            summary_path.write_text(
+                json.dumps(summary, indent=2), encoding="utf-8"
+            )
+            # Keep canonical summary paths for compatibility with existing tooling.
             (run_paths.reports_dir / f"test_{index}_summary.json").write_text(
                 json.dumps(summary, indent=2), encoding="utf-8"
             )
             tests_payload[index - 1]["state"] = "completed"
             tests_payload[index - 1]["validation_passed"] = validation.passed
+            tests_payload[index - 1]["jtl_path"] = str(command_result.result_file)
+            tests_payload[index - 1]["summary_path"] = str(summary_path)
+            tests_payload[index - 1]["run_slot_completed_at"] = datetime.now(UTC).isoformat()
+            tests_payload[index - 1]["test_plan_path"] = str(test.test_plan_path)
             if not validation.passed:
                 tests_payload[index - 1]["failure_classification"] = "validation"
             write_status(run_paths, {**status_payload, "tests": tests_payload})
@@ -290,13 +348,21 @@ class VmRunner:
         )
 
         report_payload = self._build_report(run_paths, completed_runs, request.notification.custom_report_format)
-        report_path = run_paths.reports_dir / "final_report.json"
+        report_stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        report_path = execution_reports_dir / f"final_report_{report_stamp}.json"
         report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
+        (execution_reports_dir / "final_report.json").write_text(
+            json.dumps(report_payload, indent=2), encoding="utf-8"
+        )
+        # Keep canonical final report path for compatibility with existing tooling.
+        canonical_report_path = run_paths.reports_dir / "final_report.json"
+        shutil.copy2(report_path, canonical_report_path)
 
         status_payload["state"] = "completed"
         status_payload["completed_at"] = datetime.now(UTC).isoformat()
         status_payload["tests"] = tests_payload
         status_payload["final_report_path"] = str(report_path)
+        status_payload["final_report_latest_path"] = str(canonical_report_path)
         write_status(run_paths, status_payload)
         self._emit(
             run_paths,
@@ -306,6 +372,7 @@ class VmRunner:
                 message="Final report is ready",
                 details={
                     "report_path": str(report_path),
+                    "report_latest_path": str(canonical_report_path),
                     "report_payload": report_payload,
                     "custom_report_format": request.notification.custom_report_format,
                 },
@@ -347,6 +414,7 @@ class VmRunner:
             return self._report_builder.build_single_run_report(
                 test_name=test.test_name,
                 environment_label=test.environment_label,
+                test_plan_path=str(test.test_plan_path),
                 metrics=current_metrics,
                 validation=parse_validation(summary["validation"]),
                 comparison_summary=comparison_summary,
@@ -423,7 +491,36 @@ class VmRunner:
 
 
 def parse_metrics(payload: dict[str, object]):
-    from perf_orchestrator.models.results import TestMetrics
+    from perf_orchestrator.models.results import AggregateRow, TestMetrics
+
+    aggregate_payload = payload.get("aggregate_rows", [])
+    aggregate_rows: list[AggregateRow] = []
+    if isinstance(aggregate_payload, list):
+        for row in aggregate_payload:
+            if not isinstance(row, dict):
+                continue
+            aggregate_rows.append(
+                AggregateRow(
+                    label=str(row.get("label", "UNNAMED")),
+                    samples=int(row.get("samples", 0)),
+                    average_ms=float(row.get("average_ms", 0.0)),
+                    median_ms=float(row.get("median_ms", 0.0)),
+                    p90_ms=float(row.get("p90_ms", 0.0)),
+                    p95_ms=float(row.get("p95_ms", 0.0)),
+                    p99_ms=float(row.get("p99_ms", 0.0)),
+                    min_ms=float(row.get("min_ms", 0.0)),
+                    max_ms=float(row.get("max_ms", 0.0)),
+                    error_pct=float(row.get("error_pct", 0.0)),
+                    throughput_per_sec=float(row.get("throughput_per_sec", 0.0)),
+                )
+            )
+
+    transaction_names_payload = payload.get("transaction_names", [])
+    transaction_names = (
+        tuple(str(item) for item in transaction_names_payload)
+        if isinstance(transaction_names_payload, list)
+        else ()
+    )
 
     return TestMetrics(
         transactions=int(payload["transactions"]),
@@ -434,6 +531,8 @@ def parse_metrics(payload: dict[str, object]):
         max_response_ms=float(payload["max_response_ms"]),
         error_rate_pct=float(payload["error_rate_pct"]),
         duration_minutes=int(payload["duration_minutes"]),
+        aggregate_rows=tuple(aggregate_rows),
+        transaction_names=transaction_names,
     )
 
 

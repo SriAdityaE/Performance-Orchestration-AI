@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+import re
 
 from perf_orchestrator.config import load_settings
 from perf_orchestrator.models.events import LifecycleEvent
 from perf_orchestrator.models.run_request import RunRequest, TestDefinition
-from perf_orchestrator.runner.vm_runner import CommandResult, VmRunner
+from perf_orchestrator.runner.vm_runner import CommandResult, VmRunner, parse_metrics
 from perf_orchestrator.services.orchestrator import LocalOrchestrator
 
 
@@ -20,8 +21,10 @@ class RecordingNotifier:
 
 
 class FakeCommandRunner:
-    def run(self, run_paths, test, test_index):
-        result_file = run_paths.artifacts_dir / f"test_{test_index}.jtl"
+    def run(self, run_paths, test, test_index, *, results_dir=None):
+        output_dir = results_dir or run_paths.artifacts_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        result_file = output_dir / f"test_{test_index}.jtl"
         stdout_path = run_paths.logs_dir / f"test_{test_index}.stdout.log"
         stderr_path = run_paths.logs_dir / f"test_{test_index}.stderr.log"
         result_file.write_text(
@@ -76,6 +79,18 @@ def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     status_payload = json.loads(result.run_paths.status_path.read_text(encoding="utf-8"))
     assert status_payload["state"] == "completed"
     assert Path(status_payload["final_report_path"]).exists()
+    assert Path(status_payload["final_report_latest_path"]).exists()
+    assert "execution_stamp" in status_payload
+    assert "execution_date_bucket" in status_payload
+    assert re.match(r"^\d{2}-\d{2}\([A-Za-z]{3}-\d{1,2}(st|nd|rd|th)\)$", status_payload["execution_date_bucket"])
+    assert "jtl" in status_payload["tests"][0]["jtl_path"]
+    jtl_path = Path(status_payload["tests"][0]["jtl_path"])
+    assert jtl_path.exists()
+    run_slot = status_payload["tests"][0]["run_slot"]
+    assert run_slot.startswith("Run1_")
+    assert jtl_path.parent.name == run_slot
+    assert jtl_path.parent.parent.name == status_payload["execution_date_bucket"]
+    assert Path(status_payload["tests"][0]["summary_path"]).exists()
     assert [event.event_type for event in notifier.events] == [
         "test_started",
         "test_ended",
@@ -120,3 +135,51 @@ def test_vm_runner_archives_stale_queued_request(tmp_path: Path) -> None:
     assert updated_status["failure_reason"] == "VM runner startup timeout exceeded"
     assert not (settings.requests_dir / f"{result.run_paths.run_id}.json").exists()
     assert (settings.requests_dir / "stale" / f"{result.run_paths.run_id}.json").exists()
+
+
+def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:
+    payload = {
+        "transactions": 4,
+        "throughput": 2.0,
+        "avg_response_ms": 19.25,
+        "p95_response_ms": 50.0,
+        "p99_response_ms": 50.0,
+        "max_response_ms": 50.0,
+        "error_rate_pct": 25.0,
+        "duration_minutes": 1,
+        "aggregate_rows": [
+            {
+                "label": "Txn_A",
+                "samples": 2,
+                "average_ms": 11.0,
+                "median_ms": 11.0,
+                "p90_ms": 12.0,
+                "p95_ms": 12.0,
+                "p99_ms": 12.0,
+                "min_ms": 10.0,
+                "max_ms": 12.0,
+                "error_pct": 0.0,
+                "throughput_per_sec": 1.0,
+            },
+            {
+                "label": "TOTAL",
+                "samples": 4,
+                "average_ms": 19.25,
+                "median_ms": 12.0,
+                "p90_ms": 50.0,
+                "p95_ms": 50.0,
+                "p99_ms": 50.0,
+                "min_ms": 5.0,
+                "max_ms": 50.0,
+                "error_pct": 25.0,
+                "throughput_per_sec": 2.0,
+            },
+        ],
+        "transaction_names": ["Txn_A", "Txn_B", "Txn_C"],
+    }
+
+    metrics = parse_metrics(payload)
+
+    assert metrics.transaction_names == ("Txn_A", "Txn_B", "Txn_C")
+    assert [row.label for row in metrics.aggregate_rows] == ["Txn_A", "TOTAL"]
+    assert metrics.aggregate_rows[0].samples == 2

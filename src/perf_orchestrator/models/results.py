@@ -4,6 +4,21 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class AggregateRow:
+    label: str
+    samples: int
+    average_ms: float
+    median_ms: float
+    p90_ms: float
+    p95_ms: float
+    p99_ms: float
+    min_ms: float
+    max_ms: float
+    error_pct: float
+    throughput_per_sec: float
+
+
+@dataclass(frozen=True)
 class TestMetrics:
     transactions: int
     throughput: float
@@ -13,6 +28,8 @@ class TestMetrics:
     max_response_ms: float
     error_rate_pct: float
     duration_minutes: int
+    aggregate_rows: tuple[AggregateRow, ...] = ()
+    transaction_names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

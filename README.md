@@ -26,8 +26,10 @@ This project orchestrates performance-test execution on VM, captures artifacts a
 - Queued pointers: `shared-root\requests\*.json`
 - Run folders: `shared-root\runs\<run_id>\`
 - Per-run logs: `shared-root\runs\<run_id>\logs\`
-- Per-run artifacts: `shared-root\runs\<run_id>\artifacts\`
-- Final report: `shared-root\runs\<run_id>\reports\final_report.json`
+- JTL artifacts (date bucket + backup slots): `shared-root\runs\<run_id>\artifacts\jtl\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\test_<index>.jtl`
+- Per-test summary backups: `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\summary.json`
+- Final report (timestamped backup): `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\final_report_<YYYYMMDD-HHMMSS>.json`
+- Final report (latest compatibility copy): `shared-root\runs\<run_id>\reports\final_report.json`
 - Events log: `shared-root\runs\<run_id>\events.jsonl`
 
 ## Run Scripts
@@ -76,9 +78,15 @@ Final report is designed for business-ready sharing with:
 
 - Test summary
 - Aggregate-style metric visibility
+- Transaction-level aggregate rows derived from JMeter `label` values (plus `TOTAL`)
+- Transactions detected count and transaction name list
+- Executed test plan path for traceability (`test_plan_path`)
 - Test observations
 - Prior-run comparison (when available)
 - Recommendation on best run and readiness
+
+Default report generation does not hardcode a single aggregate label (for example, `ALL`).
+It preserves discovered transaction labels from the parsed JTL/CSV output.
 
 ## Verification Before Push
 

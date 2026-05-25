@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from dataclasses import asdict
 
 from perf_orchestrator.models.results import ComparisonSummary, TestMetrics, ValidationResult
 
@@ -11,6 +12,7 @@ class ReportBuilder:
         *,
         test_name: str,
         environment_label: str,
+        test_plan_path: str | None = None,
         metrics: TestMetrics,
         validation: ValidationResult,
         comparison_summary: ComparisonSummary | None = None,
@@ -30,15 +32,22 @@ class ReportBuilder:
             "Test Summary": {
                 "test_name": test_name,
                 "environment": environment_label,
+                "transactions_detected": len(metrics.transaction_names),
+                "transaction_names": list(metrics.transaction_names),
                 "transactions": metrics.transactions,
                 "throughput": metrics.throughput,
-                "jmeter_aggregate": [
+                "jmeter_aggregate": [asdict(row) for row in metrics.aggregate_rows]
+                if metrics.aggregate_rows
+                else [
                     {
-                        "label": "ALL",
+                        "label": test_name,
                         "samples": metrics.transactions,
                         "average_ms": metrics.avg_response_ms,
+                        "median_ms": metrics.avg_response_ms,
+                        "p90_ms": metrics.p95_response_ms,
                         "p95_ms": metrics.p95_response_ms,
                         "p99_ms": metrics.p99_response_ms,
+                        "min_ms": metrics.avg_response_ms,
                         "max_ms": metrics.max_response_ms,
                         "error_pct": metrics.error_rate_pct,
                         "throughput_per_sec": metrics.throughput,
@@ -53,6 +62,7 @@ class ReportBuilder:
                 "error_rate_pct": metrics.error_rate_pct,
             },
             "Test Execution Summary": {
+                "test_plan_path": test_plan_path,
                 "duration_minutes": metrics.duration_minutes,
                 "validation_passed": validation.passed,
                 "threshold_checks": validation.threshold_checks,

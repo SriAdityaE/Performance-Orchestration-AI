@@ -92,7 +92,7 @@
 - [x] T027 Implement retry and timeout enforcement in src/perf_orchestrator/config.py, src/perf_orchestrator/services/orchestrator.py, and src/perf_orchestrator/runner/vm_runner.py
 - [x] T028 [P] Update operator flow and command usage in specs/001-perf-test-orchestration/quickstart.md
 - [x] T029 [P] Align the shared-root contract with final implementation details in specs/001-perf-test-orchestration/contracts/shared-root-run-contract.md
-- [ ] T030 Validate the end-to-end operator flow described in specs/001-perf-test-orchestration/quickstart.md
+- [x] T030 Validate the end-to-end operator flow described in specs/001-perf-test-orchestration/quickstart.md
 
 ---
 

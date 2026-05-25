@@ -54,9 +54,18 @@ Required top-level fields:
 2. VM-side runner polls `requests/` for new request pointers.
 3. VM-side runner processes only runs whose status is `queued_for_vm_runner`.
 4. VM-side runner writes test-level state updates to `status.json`.
-5. Final report is written to `reports/final_report.json` before `final_report_ready` is emitted.
-6. `final_report_ready` event details include `report_path`, `report_payload`, and `custom_report_format`.
-7. Local and VM `PERF_SHARED_ROOT` values may differ as paths, but they must map to the same physical shared storage.
+5. JTL files are written under `artifacts/jtl/{date_bucket}/Run{index}_{run_stamp}/test_{index}.jtl`.
+6. `date_bucket` format is `DD-MM(MMM-Do)` (example: `25-05(May-25th)`).
+7. Per-test summary backups are written under `reports/{date_bucket}/Run{index}_{run_stamp}/summary.json`.
+8. Final report backup is written to `reports/{date_bucket}/final_report_{report_stamp}.json` before `final_report_ready` is emitted.
+9. A latest compatibility copy is also written to `reports/final_report.json`.
+10. `final_report_ready` event details include `report_path`, `report_latest_path`, `report_payload`, and `custom_report_format`.
+11. Local and VM `PERF_SHARED_ROOT` values may differ as paths, but they must map to the same physical shared storage.
+12. For single-run reports, `report_payload["Test Summary"]` includes transaction-level fields derived from parsed JTL labels:
+  - `transactions_detected`
+  - `transaction_names`
+  - `jmeter_aggregate` rows with one entry per discovered label plus `TOTAL`
+13. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
 
 ## Operational Notes
 

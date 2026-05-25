@@ -26,27 +26,37 @@ function formatSummary(summary: Record<string, unknown>): string {
   const aggregate = Array.isArray(summary.jmeter_aggregate)
     ? (summary.jmeter_aggregate as Record<string, unknown>[])
     : [];
-  const transactionLabel = String(summary.test_name ?? "ALL");
+  const transactionLabel = String(summary.test_name ?? "N/A");
   const environment = String(summary.environment ?? "N/A");
   const transactions = Number(summary.transactions ?? 0);
+  const transactionNames = Array.isArray(summary.transaction_names)
+    ? summary.transaction_names
+    : [];
+  const transactionsDetected = Number(summary.transactions_detected ?? transactionNames.length ?? 0);
+  const transactionList = transactionNames.length > 0 ? transactionNames.join(", ") : "N/A";
 
   const header = [
     "*JMeter Aggregate Summary (Stakeholder View)*",
     `Test: ${transactionLabel}`,
     `Environment: ${environment}`,
-    `Transactions: ${transactions}`,
+    `Samples: ${transactions}`,
+    `Transactions Detected: ${transactionsDetected}`,
+    `Transaction Names: ${transactionList}`,
   ].join("\n");
 
   if (aggregate.length === 0) {
     return `${header}\n${formatValue(summary)}`;
   }
 
-  const row = aggregate[0];
+  const rows = aggregate.map((row) => {
+    return `${String(row.label ?? "UNNAMED")} | ${Number(row.samples ?? 0)} | ${Number(row.average_ms ?? 0).toFixed(2)} | ${Number(row.median_ms ?? 0).toFixed(2)} | ${Number(row.p90_ms ?? 0).toFixed(2)} | ${Number(row.p95_ms ?? 0).toFixed(2)} | ${Number(row.p99_ms ?? 0).toFixed(2)} | ${Number(row.max_ms ?? 0).toFixed(2)} | ${Number(row.error_pct ?? 0).toFixed(2)} | ${Number(row.throughput_per_sec ?? 0).toFixed(2)}`;
+  });
+
   const table = [
     "```",
-    "Label | Samples | Avg(ms) | P95(ms) | P99(ms) | Max(ms) | Error% | Throughput/s",
-    "----- | ------- | ------- | ------- | ------- | ------- | ------ | ------------",
-    `${String(row.label ?? transactionLabel)} | ${Number(row.samples ?? transactions)} | ${Number(row.average_ms ?? 0).toFixed(2)} | ${Number(row.p95_ms ?? 0).toFixed(2)} | ${Number(row.p99_ms ?? 0).toFixed(2)} | ${Number(row.max_ms ?? 0).toFixed(2)} | ${Number(row.error_pct ?? 0).toFixed(2)} | ${Number(row.throughput_per_sec ?? 0).toFixed(2)}`,
+    "Label | Samples | Avg(ms) | Median(ms) | P90(ms) | P95(ms) | P99(ms) | Max(ms) | Error% | Throughput/s",
+    "----- | ------- | ------- | ---------- | ------- | ------- | ------- | ------- | ------ | ------------",
+    ...rows,
     "```",
   ].join("\n");
 

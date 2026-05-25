@@ -67,11 +67,18 @@ PERF_SHARED_ROOT/
         ├── status.json
         ├── events.jsonl
         ├── artifacts/
-        │   └── test_{n}.jtl
+        │   └── jtl/
+        │       └── {date_bucket}/
+        │           └── Run{index}_{run_stamp}/
+        │               └── test_{n}.jtl
         ├── logs/
         │   ├── test_{n}.stdout.log
         │   └── test_{n}.stderr.log
         └── reports/
+          ├── {date_bucket}/
+          │   ├── Run{index}_{run_stamp}/
+          │   │   └── summary.json
+          │   └── final_report_{report_stamp}.json
             ├── test_{n}_summary.json
             └── final_report.json
 ```

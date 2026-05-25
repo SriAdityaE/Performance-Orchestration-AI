@@ -164,14 +164,10 @@ Minimal request example:
 
 ## Verification
 
-- Confirm a run folder exists under `PERF_SHARED_ROOT\runs\{run_id}`.
-- Confirm `status.json` reaches `completed` or `failed`.
-- Confirm report files are created under `reports/`.
-- Confirm Slack receives the approved lifecycle events and final report.
-- Confirm `events.jsonl` includes the same lifecycle sequence that appears in Slack.
-- Confirm both local and VM `PERF_SHARED_ROOT` values resolve to the same physical shared storage.
-- Confirm a fresh run is queued after runner restart; runner startup alone does not emit lifecycle events.
-- Confirm local `-Watch` mode is only used when local can read the same shared-root as VM.
+- Confirm JTL backups are created under `artifacts/jtl/<DD-MM(MMM-Do)>/Run<index>_<YYYYMMDD-HHMMSS>/`.
+- Confirm per-test report backups are created under `reports/<DD-MM(MMM-Do)>/Run<index>_<YYYYMMDD-HHMMSS>/summary.json`.
+- Confirm timestamped final report backups are created under `reports/<DD-MM(MMM-Do)>/final_report_<YYYYMMDD-HHMMSS>.json`.
+- Confirm `reports/final_report.json` is updated as the latest compatibility copy.
 
 ## Local Verification Gate (Before Push)
 
