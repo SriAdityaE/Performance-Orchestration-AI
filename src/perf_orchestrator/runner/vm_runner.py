@@ -528,7 +528,7 @@ def parse_metrics(payload: dict[str, object]):
 
     aggregate_payload = payload.get("aggregate_rows", [])
     aggregate_rows: list[AggregateRow] = []
-    if isinstance(aggregate_payload, list):
+    if isinstance(aggregate_payload, (list, tuple)):
         for row in aggregate_payload:
             if not isinstance(row, dict):
                 continue
@@ -551,7 +551,7 @@ def parse_metrics(payload: dict[str, object]):
     transaction_names_payload = payload.get("transaction_names", [])
     transaction_names = (
         tuple(str(item) for item in transaction_names_payload)
-        if isinstance(transaction_names_payload, list)
+        if isinstance(transaction_names_payload, (list, tuple))
         else ()
     )
 

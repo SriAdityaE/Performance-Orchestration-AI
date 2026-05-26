@@ -192,3 +192,51 @@ def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:
     assert metrics.transaction_names == ("Txn_A", "Txn_B", "Txn_C")
     assert [row.label for row in metrics.aggregate_rows] == ["Txn_A", "TOTAL"]
     assert metrics.aggregate_rows[0].samples == 2
+
+
+def test_parse_metrics_accepts_tuple_payload_for_aggregate_rows() -> None:
+    payload = {
+        "transactions": 2,
+        "throughput": 1.0,
+        "avg_response_ms": 15.0,
+        "p95_response_ms": 20.0,
+        "p99_response_ms": 20.0,
+        "max_response_ms": 20.0,
+        "error_rate_pct": 0.0,
+        "duration_minutes": 1,
+        "aggregate_rows": (
+            {
+                "label": "Txn_A",
+                "samples": 1,
+                "average_ms": 10.0,
+                "median_ms": 10.0,
+                "p90_ms": 10.0,
+                "p95_ms": 10.0,
+                "p99_ms": 10.0,
+                "min_ms": 10.0,
+                "max_ms": 10.0,
+                "error_pct": 0.0,
+                "throughput_per_sec": 0.5,
+            },
+            {
+                "label": "TOTAL",
+                "samples": 2,
+                "average_ms": 15.0,
+                "median_ms": 15.0,
+                "p90_ms": 20.0,
+                "p95_ms": 20.0,
+                "p99_ms": 20.0,
+                "min_ms": 10.0,
+                "max_ms": 20.0,
+                "error_pct": 0.0,
+                "throughput_per_sec": 1.0,
+            },
+        ),
+        "transaction_names": ("Txn_A", "Txn_B"),
+    }
+
+    metrics = parse_metrics(payload)
+
+    assert metrics.transaction_names == ("Txn_A", "Txn_B")
+    assert [row.label for row in metrics.aggregate_rows] == ["Txn_A", "TOTAL"]
+    assert metrics.aggregate_rows[1].samples == 2
