@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import time
@@ -45,6 +46,12 @@ def _ordinal_suffix(day: int) -> str:
 def _format_date_bucket(dt: datetime) -> str:
     day = dt.day
     return f"{dt.strftime('%d-%m')}({dt.strftime('%b')}-{day}{_ordinal_suffix(day)})"
+
+
+def _sanitize_path_segment(value: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", value.strip())
+    safe = safe.strip("_")
+    return safe or "test"
 
 
 class JMeterCommandRunner:
@@ -238,10 +245,10 @@ class VmRunner:
         for index, test in enumerate(request.tests, start=1):
             test_stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
             run_slot = f"Run{index}_{test_stamp}"
-            # New format for testlogs: test_YYYYMMDD_round{index}_HHMMSS
             test_date = run_started_at.strftime("%Y%m%d")
             test_time = datetime.now(UTC).strftime("%H%M%S")
-            testlogs_slot = f"test_{test_date}_round{index}_{test_time}"
+            test_name_slug = _sanitize_path_segment(test.test_name)
+            testlogs_slot = f"{test_date}_{test_name_slug}_round{index}_{test_time}"
             test_artifacts_dir = execution_artifacts_dir / run_slot
             test_reports_dir = execution_reports_dir / run_slot
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)

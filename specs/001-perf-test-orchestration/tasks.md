@@ -93,6 +93,8 @@
 - [x] T028 [P] Update operator flow and command usage in specs/001-perf-test-orchestration/quickstart.md
 - [x] T029 [P] Align the shared-root contract with final implementation details in specs/001-perf-test-orchestration/contracts/shared-root-run-contract.md
 - [x] T030 Validate the end-to-end operator flow described in specs/001-perf-test-orchestration/quickstart.md
+- [x] T031 Remove duplicate `test_started` preflight notification from the one-terminal workflow in scripts/Run-OneTerminal.ps1
+- [x] T032 Fix Slack final report delivery to send real block payloads and include JMeter aggregate rows in tools/slack-notifier/src/cli.ts and tools/slack-notifier/src/formatters/singleRun.ts
 
 ---
 

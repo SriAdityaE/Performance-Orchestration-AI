@@ -1,4 +1,9 @@
-export function formatSingleRunReport(payload: Record<string, unknown>): string {
+export type SlackRenderedMessage = {
+  text: string;
+  blocks: Record<string, unknown>[];
+};
+
+export function formatSingleRunReport(payload: Record<string, unknown>): string | SlackRenderedMessage {
   const summary = (payload["Test Summary"] as Record<string, unknown> | undefined) ?? undefined;
   const execution =
     (payload["Test Execution Summary"] as Record<string, unknown> | undefined) ?? undefined;
@@ -12,7 +17,6 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
   const testName = String(summary.test_name ?? "Performance Test");
   const environment = String(summary.environment ?? "N/A");
   const validationPassed = execution.validation_passed === true ? "✓ PASSED" : "✗ FAILED";
-  const validationColor = execution.validation_passed === true ? "good" : "danger";
 
   const blocks: Record<string, unknown>[] = [
     {
@@ -42,9 +46,20 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
       type: "section",
       text: {
         type: "mrkdwn",
-        text: formatSummaryAsMarkdown(summary),
+        text: formatSummaryMetricsAsMarkdown(summary),
       },
     });
+
+    const aggregateTable = formatAggregateTableAsMarkdown(summary);
+    if (aggregateTable) {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: aggregateTable,
+        },
+      });
+    }
   }
 
   if (execution) {
@@ -81,10 +96,13 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
     ],
   });
 
-  return JSON.stringify({ blocks }, null, 2);
+  return {
+    text: `Performance Test Report: ${testName} (${validationPassed})`,
+    blocks,
+  };
 }
 
-function formatSummaryAsMarkdown(summary: Record<string, unknown>): string {
+function formatSummaryMetricsAsMarkdown(summary: Record<string, unknown>): string {
   const transactions = Number(summary.transactions ?? 0);
   const throughput = Number(summary.throughput ?? 0);
   const avgMs = summary.response_times ? (summary.response_times as Record<string, unknown>).avg_ms : 0;
@@ -99,6 +117,28 @@ function formatSummaryAsMarkdown(summary: Record<string, unknown>): string {
     `• *P95 Response:* ${Number(p95Ms).toFixed(2)} ms\n` +
     `• *Error Rate:* ${errorPct.toFixed(2)}%`
   );
+}
+
+function formatAggregateTableAsMarkdown(summary: Record<string, unknown>): string {
+  const aggregate = Array.isArray(summary.jmeter_aggregate)
+    ? (summary.jmeter_aggregate as Record<string, unknown>[])
+    : [];
+  if (aggregate.length === 0) {
+    return "";
+  }
+
+  const rows = aggregate.map((row) => {
+    return `${String(row.label ?? "UNNAMED")} | ${Number(row.samples ?? 0)} | ${Number(row.average_ms ?? 0).toFixed(2)} | ${Number(row.median_ms ?? 0).toFixed(2)} | ${Number(row.p90_ms ?? 0).toFixed(2)} | ${Number(row.p95_ms ?? 0).toFixed(2)} | ${Number(row.p99_ms ?? 0).toFixed(2)} | ${Number(row.max_ms ?? 0).toFixed(2)} | ${Number(row.error_pct ?? 0).toFixed(2)} | ${Number(row.throughput_per_sec ?? 0).toFixed(2)}`;
+  });
+
+  return [
+    "*JMeter Aggregate Report*",
+    "```",
+    "Label | Samples | Avg(ms) | Median(ms) | P90(ms) | P95(ms) | P99(ms) | Max(ms) | Error% | Throughput/s",
+    "----- | ------- | ------- | ---------- | ------- | ------- | ------- | ------- | ------ | ------------",
+    ...rows,
+    "```",
+  ].join("\n");
 }
 
 function formatExecutionAsMarkdown(execution: Record<string, unknown>): string {
@@ -127,47 +167,6 @@ function formatExecutionAsMarkdown(execution: Record<string, unknown>): string {
     `• *Duration:* ${duration} minutes\n\n` +
     checksText
   );
-}
-
-function formatSummary(summary: Record<string, unknown>): string {
-  const aggregate = Array.isArray(summary.jmeter_aggregate)
-    ? (summary.jmeter_aggregate as Record<string, unknown>[])
-    : [];
-  const transactionLabel = String(summary.test_name ?? "N/A");
-  const environment = String(summary.environment ?? "N/A");
-  const transactions = Number(summary.transactions ?? 0);
-  const transactionNames = Array.isArray(summary.transaction_names)
-    ? summary.transaction_names
-    : [];
-  const transactionsDetected = Number(summary.transactions_detected ?? transactionNames.length ?? 0);
-  const transactionList = transactionNames.length > 0 ? transactionNames.join(", ") : "N/A";
-
-  const header = [
-    "*JMeter Aggregate Summary (Stakeholder View)*",
-    `Test: ${transactionLabel}`,
-    `Environment: ${environment}`,
-    `Samples: ${transactions}`,
-    `Transactions Detected: ${transactionsDetected}`,
-    `Transaction Names: ${transactionList}`,
-  ].join("\n");
-
-  if (aggregate.length === 0) {
-    return `${header}\n${formatValue(summary)}`;
-  }
-
-  const rows = aggregate.map((row) => {
-    return `${String(row.label ?? "UNNAMED")} | ${Number(row.samples ?? 0)} | ${Number(row.average_ms ?? 0).toFixed(2)} | ${Number(row.median_ms ?? 0).toFixed(2)} | ${Number(row.p90_ms ?? 0).toFixed(2)} | ${Number(row.p95_ms ?? 0).toFixed(2)} | ${Number(row.p99_ms ?? 0).toFixed(2)} | ${Number(row.max_ms ?? 0).toFixed(2)} | ${Number(row.error_pct ?? 0).toFixed(2)} | ${Number(row.throughput_per_sec ?? 0).toFixed(2)}`;
-  });
-
-  const table = [
-    "```",
-    "Label | Samples | Avg(ms) | Median(ms) | P90(ms) | P95(ms) | P99(ms) | Max(ms) | Error% | Throughput/s",
-    "----- | ------- | ------- | ---------- | ------- | ------- | ------- | ------- | ------ | ------------",
-    ...rows,
-    "```",
-  ].join("\n");
-
-  return `${header}\n${table}`;
 }
 
 function formatValue(value: unknown): string {

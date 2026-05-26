@@ -41,7 +41,7 @@ Submit + process + print final status/events in a single terminal:
 ```
 
 By default, this command runs in `slack` mode and sends a startup Slack notification before submit/processing.
-It then sends normal lifecycle notifications during run processing.
+It then sends only normal lifecycle notifications during run processing (no preflight `test_started` event).
 It performs fresh-start queue cleanup by default, creates a runtime request payload, and enforces a known-good test plan path.
 
 Optional process cleanup for stale runner/JMeter processes before run:

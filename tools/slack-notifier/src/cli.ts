@@ -1,5 +1,5 @@
 import { formatComparisonReport } from "./formatters/comparison.js";
-import { formatSingleRunReport } from "./formatters/singleRun.js";
+import { formatSingleRunReport, type SlackRenderedMessage } from "./formatters/singleRun.js";
 
 type EventType =
   | "test_started"
@@ -26,6 +26,11 @@ const allowedEvents = new Set<EventType>([
   "final_report_ready",
 ]);
 
+type SlackPostPayload = {
+  text: string;
+  blocks?: Record<string, unknown>[];
+};
+
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
@@ -34,7 +39,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function formatEvent(event: LifecycleEvent): string {
+function formatEvent(event: LifecycleEvent): SlackPostPayload {
   if (
     event.event_type === "final_report_ready" &&
     event.details?.report_payload &&
@@ -63,30 +68,68 @@ function formatEvent(event: LifecycleEvent): string {
   if (event.details && Object.keys(event.details).length > 0) {
     parts.push(`Details: ${JSON.stringify(event.details)}`);
   }
-  return parts.join("\n");
+  return { text: parts.join("\n") };
 }
 
-function formatFinalReport(event: LifecycleEvent): string {
+function formatFinalReport(event: LifecycleEvent): SlackPostPayload {
   const reportPayload = event.details?.report_payload as Record<string, unknown>;
   const customFormat = event.details?.custom_report_format as Record<string, unknown> | null | undefined;
   const reportSectionKeys = Object.keys(reportPayload);
   const isComparisonReport = reportSectionKeys.includes("Today's Test Results Summary");
 
-  let body = isComparisonReport
+  const rendered = isComparisonReport
     ? formatComparisonReport(reportPayload)
     : formatSingleRunReport(reportPayload);
 
-  if (customFormat?.title && typeof customFormat.title === "string") {
-    body = `*${customFormat.title}*\n\n${body}`;
+  if (typeof rendered === "string") {
+    const titlePrefix = customFormat?.title && typeof customFormat.title === "string"
+      ? `*${customFormat.title}*\n\n`
+      : "";
+    return {
+      text: [
+        `*FINAL REPORT READY*`,
+        `Run ID: ${event.run_id}`,
+        `Time: ${event.occurred_at}`,
+        "",
+        `${titlePrefix}${rendered}`,
+      ].join("\n"),
+    };
   }
 
-  return [
-    `*FINAL REPORT READY*`,
-    `Run ID: ${event.run_id}`,
-    `Time: ${event.occurred_at}`,
-    "",
-    body,
-  ].join("\n");
+  const blocks = withReportHeaderBlocks(event, rendered, customFormat);
+  return {
+    text: `FINAL REPORT READY | Run ID: ${event.run_id}`,
+    blocks,
+  };
+}
+
+function withReportHeaderBlocks(
+  event: LifecycleEvent,
+  report: SlackRenderedMessage,
+  customFormat: Record<string, unknown> | null | undefined,
+): Record<string, unknown>[] {
+  const blocks: Record<string, unknown>[] = [];
+
+  blocks.push({
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: `*FINAL REPORT READY*\nRun ID: ${event.run_id}\nTime: ${event.occurred_at}`,
+    },
+  });
+
+  if (customFormat?.title && typeof customFormat.title === "string") {
+    blocks.push({
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: customFormat.title,
+      },
+    });
+  }
+
+  blocks.push(...report.blocks);
+  return blocks;
 }
 
 function parseEvent(raw: string): LifecycleEvent {
@@ -97,13 +140,13 @@ function parseEvent(raw: string): LifecycleEvent {
   return payload;
 }
 
-async function postToSlack(webhookUrl: string, body: string): Promise<void> {
+async function postToSlack(webhookUrl: string, payload: SlackPostPayload): Promise<void> {
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text: body }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -118,7 +161,7 @@ async function main(): Promise<void> {
   const channel = (process.env.NOTIFICATION_CHANNEL ?? "slack").toLowerCase();
 
   if (channel === "terminal") {
-    process.stdout.write(message + "\n");
+    process.stdout.write(JSON.stringify(message, null, 2) + "\n");
     return;
   }
 

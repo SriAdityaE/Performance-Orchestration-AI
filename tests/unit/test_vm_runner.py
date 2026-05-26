@@ -95,6 +95,10 @@ def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     assert Path(status_payload["tests"][0]["summary_path"]).exists()
     assert "external_testlogs_dir" in status_payload
     assert Path(status_payload["tests"][0]["external_testlogs_slot"]).exists()
+    assert re.match(
+        r"^\d{8}_baseline_round1_\d{6}$",
+        status_payload["tests"][0]["testlogs_slot_name"],
+    )
     assert Path(status_payload["external_final_report_path"]).exists()
     assert [event.event_type for event in notifier.events] == [
         "test_started",

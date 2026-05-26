@@ -172,39 +172,6 @@ Send-StartupSlackNotification `
     -RequestFile $runtimeRequestFile `
   -NotificationChannel $NotificationChannel
 
-function Send-SlackPreflightNotification {
-    param(
-        [string]$ProjectRoot,
-        [string]$NotificationChannel
-    )
-
-    if ($NotificationChannel -notin @("slack", "both")) {
-        return
-    }
-
-    $notifierCli = Join-Path $ProjectRoot "tools\slack-notifier\dist\cli.js"
-    if (-not (Test-Path $notifierCli)) {
-        throw "Slack notifier script not found: $notifierCli. Build it with npm run build:notifier"
-    }
-
-    $payload = @{
-        event_type = "test_started"
-        run_id = "one-terminal-preflight"
-        message = "One-terminal workflow started"
-        test_name = "preflight"
-        details = @{ phase = "pre_submit" }
-        occurred_at = (Get-Date).ToUniversalTime().ToString("o")
-    } | ConvertTo-Json -Compress
-
-    $payload | node $notifierCli | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Slack preflight notification failed (exit code $LASTEXITCODE)."
-    }
-    Write-Host "Slack preflight notification sent." -ForegroundColor Green
-}
-
-Send-SlackPreflightNotification -ProjectRoot $ProjectRoot -NotificationChannel $NotificationChannel
-
 Write-Host "[1/4] Submitting run request..." -ForegroundColor Cyan
 & $submitScript `
   -ProjectRoot $ProjectRoot `

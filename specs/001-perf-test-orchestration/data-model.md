@@ -81,6 +81,14 @@ PERF_SHARED_ROOT/
           │   └── final_report_{report_stamp}.json
             ├── test_{n}_summary.json
             └── final_report.json
+
+      TEST_LOG_ROOT/ (default `L:\testlogs`)
+      └── {run_id}/
+        └── {date_bucket}/
+          └── {YYYYMMDD}_{test_name}_round{index}_{HHMMSS}/
+            ├── test_{n}.jtl
+            ├── summary.json
+            └── final_report*.json
 ```
 
 ## State Model

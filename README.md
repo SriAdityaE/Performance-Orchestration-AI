@@ -31,7 +31,7 @@ This project orchestrates performance-test execution on VM, captures artifacts a
 - Per-test summary backups: `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\summary.json`
 - Final report (timestamped backup): `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\final_report_<YYYYMMDD-HHMMSS>.json`
 - Final report (latest compatibility copy): `shared-root\runs\<run_id>\reports\final_report.json`
-- External mirror backups (default, round-based naming): `L:\testlogs\<run_id>\<DD-MM(MMM-Do)>\test_<YYYYMMDD>_round<index>_<HHMMSS>\...`
+- External mirror backups (default, round-based naming): `L:\testlogs\<run_id>\<DD-MM(MMM-Do)>\<YYYYMMDD>_<test_name>_round<index>_<HHMMSS>\...`
 - Events log: `shared-root\runs\<run_id>\events.jsonl`
 
 ## Run Scripts
@@ -45,7 +45,7 @@ Run from `scripts` folder:
 ```
 
 This command handles submit + process + final status/events in one terminal.
-By default, it uses Slack channel and sends startup + lifecycle notifications.
+By default, it uses Slack channel and sends one startup notification plus standard lifecycle notifications.
 It also archives previously queued request pointers before submit so the latest request is executed.
 
 ### Useful One-Terminal Options
