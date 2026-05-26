@@ -238,13 +238,17 @@ class VmRunner:
         for index, test in enumerate(request.tests, start=1):
             test_stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
             run_slot = f"Run{index}_{test_stamp}"
+            # New format for testlogs: test_YYYYMMDD_round{index}_HHMMSS
+            test_date = run_started_at.strftime("%Y%m%d")
+            test_time = datetime.now(UTC).strftime("%H%M%S")
+            testlogs_slot = f"test_{test_date}_round{index}_{test_time}"
             test_artifacts_dir = execution_artifacts_dir / run_slot
             test_reports_dir = execution_reports_dir / run_slot
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)
             test_reports_dir.mkdir(parents=True, exist_ok=True)
             external_test_dir: Path | None = None
             if external_run_dir:
-                external_test_dir = external_run_dir / run_slot
+                external_test_dir = external_run_dir / testlogs_slot
                 external_test_dir.mkdir(parents=True, exist_ok=True)
 
             tests_payload[index - 1]["state"] = "running"
@@ -337,6 +341,7 @@ class VmRunner:
             tests_payload[index - 1]["summary_path"] = str(summary_path)
             if external_test_dir:
                 tests_payload[index - 1]["external_testlogs_slot"] = str(external_test_dir)
+                tests_payload[index - 1]["testlogs_slot_name"] = testlogs_slot
             tests_payload[index - 1]["run_slot_completed_at"] = datetime.now(UTC).isoformat()
             tests_payload[index - 1]["test_plan_path"] = str(test.test_plan_path)
             if not validation.passed:

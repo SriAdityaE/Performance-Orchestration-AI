@@ -3,7 +3,7 @@ param(
     [string]$RequestFile = "request.json",
     [string]$PerfSharedRoot,
     [string]$JMeterHome,
-    [string]$TestPlanPath = "L:\Latest_Script_Sqlserver\Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
+    [string]$TestPlanPath = "L:\AI_SPEC\Xinspect_JMeterTest.jmx",
     [ValidateSet("terminal", "slack", "teams", "both")]
     [string]$NotificationChannel = "slack",
     [string]$SlackWebhookUrl,

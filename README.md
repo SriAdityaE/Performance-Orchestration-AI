@@ -26,11 +26,12 @@ This project orchestrates performance-test execution on VM, captures artifacts a
 - Queued pointers: `shared-root\requests\*.json`
 - Run folders: `shared-root\runs\<run_id>\`
 - Per-run logs: `shared-root\runs\<run_id>\logs\`
+- JMeter script (default): `L:\AI_SPEC\Xinspect_JMeterTest.jmx`
 - JTL artifacts (date bucket + backup slots): `shared-root\runs\<run_id>\artifacts\jtl\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\test_<index>.jtl`
 - Per-test summary backups: `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\summary.json`
 - Final report (timestamped backup): `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\final_report_<YYYYMMDD-HHMMSS>.json`
 - Final report (latest compatibility copy): `shared-root\runs\<run_id>\reports\final_report.json`
-- External mirror backups (default): `L:\testlogs\<run_id>\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\...`
+- External mirror backups (default, round-based naming): `L:\testlogs\<run_id>\<DD-MM(MMM-Do)>\test_<YYYYMMDD>_round<index>_<HHMMSS>\...`
 - Events log: `shared-root\runs\<run_id>\events.jsonl`
 
 ## Run Scripts
@@ -53,7 +54,7 @@ It also archives previously queued request pointers before submit so the latest 
 .\Run-OneTerminal.ps1 -NotificationChannel terminal
 .\Run-OneTerminal.ps1 -KillPreviousProcesses
 .\Run-OneTerminal.ps1 -SkipQueueCleanup
-.\Run-OneTerminal.ps1 -TestPlanPath "L:\Latest_Script_Sqlserver\MyPlan.jmx"
+.\.\Run-OneTerminal.ps1 -TestPlanPath "L:\AI_SPEC\Xinspect_JMeterTest.jmx"
 ```
 
 ### Wrapper Scripts

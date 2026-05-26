@@ -59,7 +59,7 @@ Skip queue cleanup when you explicitly want to preserve queued pointers:
 Override test plan path for a different demo script:
 
 ```powershell
-.\Run-OneTerminal.ps1 -TestPlanPath "L:\Latest_Script_Sqlserver\MyOtherPlan.jmx"
+.\.\Run-OneTerminal.ps1 -TestPlanPath "L:\AI_SPEC\Xinspect_JMeterTest.jmx"
 ```
 
 For terminal-only lifecycle output (no Slack popups):

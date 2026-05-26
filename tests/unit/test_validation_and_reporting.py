@@ -147,7 +147,7 @@ def test_report_builder_uses_transaction_rows_when_available(tmp_path) -> None:
     report = builder.build_single_run_report(
         test_name="load-test",
         environment_label="vm",
-        test_plan_path="L:/Latest_Script_Sqlserver/Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
+        test_plan_path="L:/AI_SPEC/Xinspect_JMeterTest.jmx",
         metrics=parsed_metrics,
         validation=validation,
     )
@@ -157,7 +157,7 @@ def test_report_builder_uses_transaction_rows_when_available(tmp_path) -> None:
     assert summary["transactions_detected"] == 2
     assert summary["transaction_names"] == ["Txn_A", "Txn_B"]
     assert [row["label"] for row in summary["jmeter_aggregate"]] == ["Txn_A", "Txn_B", "TOTAL"]
-    assert execution["test_plan_path"].endswith("Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx")
+    assert execution["test_plan_path"].endswith("Xinspect_JMeterTest.jmx")
 
 
 def test_comparison_report_includes_both_runs_and_observations() -> None:

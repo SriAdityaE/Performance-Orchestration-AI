@@ -139,7 +139,7 @@ Minimal request example:
       {
          "test_name": "baseline",
          "environment_label": "vm",
-         "test_plan_path": "L:/Latest_Script_Sqlserver/Xinsepect_RDS_SQL_BabelfishTestplan_Latest_07_21.jmx",
+         "test_plan_path": "L:/AI_SPEC/Xinspect_JMeterTest.jmx",
          "user_count": 100,
          "ramp_up_seconds": 30,
          "duration_minutes": 60,
@@ -170,7 +170,7 @@ Minimal request example:
 - Confirm per-test report backups are created under `reports/<DD-MM(MMM-Do)>/Run<index>_<YYYYMMDD-HHMMSS>/summary.json`.
 - Confirm timestamped final report backups are created under `reports/<DD-MM(MMM-Do)>/final_report_<YYYYMMDD-HHMMSS>.json`.
 - Confirm `reports/final_report.json` is updated as the latest compatibility copy.
-- Confirm external backup files are written under `TEST_LOG_ROOT` (default `L:\testlogs`) using run/date/run-slot folders.
+- Confirm external backup files are written under `L:\testlogs\<run_id>\<date_bucket>\test_<YYYYMMDD>_round<index>_<HHMMSS>\` using the round-based naming convention.
 
 ## Local Verification Gate (Before Push)
 
