@@ -201,17 +201,6 @@ class ReportBuilder:
             "even when average latency appears healthy."
         )
 
-        if validation.passed:
-            decision = (
-                "Stakeholder Decision: Validation passed. Recommendation is to proceed to next stage "
-                "while continuing normal trend monitoring."
-            )
-        else:
-            decision = (
-                "Stakeholder Decision: Validation failed. Recommendation is to hold release for this scope "
-                "until regressions are triaged and corrected."
-            )
-
         reasons = list(validation.reasons) or ["No threshold violations were reported."]
         reason_lines = [f"Test Observation: {reason}" for reason in reasons]
 
@@ -226,11 +215,6 @@ class ReportBuilder:
         if best_run_recommendation:
             comparison_lines.append(f"Best Run Recommendation: {best_run_recommendation}")
 
-        prompt_line = (
-            "Analysis Prompt Used: You are a senior performance architect. Analyze the run metrics, "
-            "identify business impact, and provide production-readiness guidance without requiring manual rewriting."
-        )
-
         return [
             summary,
             latency,
@@ -239,6 +223,4 @@ class ReportBuilder:
             max_impact,
             *reason_lines,
             *comparison_lines,
-            decision,
-            prompt_line,
         ]
