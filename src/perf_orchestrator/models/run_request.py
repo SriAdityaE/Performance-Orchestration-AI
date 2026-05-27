@@ -13,9 +13,9 @@ class TestDefinition:
     test_name: str
     environment_label: str
     test_plan_path: Path
-    user_count: int
-    ramp_up_seconds: int
-    duration_minutes: int
+    user_count: int | None = None
+    ramp_up_seconds: int = 0
+    duration_minutes: int = 5
     expected_throughput: float | None = None
     extra_args: dict[str, str] = field(default_factory=dict)
 
@@ -24,8 +24,8 @@ class TestDefinition:
             raise RunRequestError("test_name is required")
         if not self.environment_label.strip():
             raise RunRequestError("environment_label is required")
-        if self.user_count <= 0:
-            raise RunRequestError("user_count must be greater than zero")
+        if self.user_count is not None and self.user_count <= 0:
+            raise RunRequestError("user_count must be greater than zero when provided")
         if self.ramp_up_seconds < 0:
             raise RunRequestError("ramp_up_seconds must be zero or greater")
         if self.duration_minutes <= 0:
@@ -39,9 +39,9 @@ class TestDefinition:
             test_name=str(payload["test_name"]),
             environment_label=str(payload["environment_label"]),
             test_plan_path=Path(str(payload["test_plan_path"])),
-            user_count=int(payload["user_count"]),
-            ramp_up_seconds=int(payload["ramp_up_seconds"]),
-            duration_minutes=int(payload["duration_minutes"]),
+            user_count=int(payload["user_count"]) if payload.get("user_count") is not None else None,
+            ramp_up_seconds=int(payload["ramp_up_seconds"]) if payload.get("ramp_up_seconds") is not None else 0,
+            duration_minutes=int(payload["duration_minutes"]) if payload.get("duration_minutes") is not None else 5,
             expected_throughput=(
                 float(payload["expected_throughput"])
                 if payload.get("expected_throughput") is not None
