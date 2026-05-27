@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import asdict
 
-from perf_orchestrator.models.results import ComparisonSummary, TestMetrics, ValidationResult
+from perf_orchestrator.models.results import AggregateRow, ComparisonSummary, TestMetrics, ValidationResult
 
 
 class ReportBuilder:
@@ -27,17 +27,18 @@ class ReportBuilder:
             comparison_summary=comparison_summary,
             best_run_recommendation=best_run_recommendation,
         )
+        transaction_names, aggregate_rows = self._build_single_run_aggregate_view(test_name, metrics)
 
         base = {
             "Test Summary": {
                 "test_name": test_name,
                 "environment": environment_label,
-                "transactions_detected": len(metrics.transaction_names),
-                "transaction_names": list(metrics.transaction_names),
+                "transactions_detected": len(transaction_names),
+                "transaction_names": transaction_names,
                 "transactions": metrics.transactions,
                 "throughput": metrics.throughput,
-                "jmeter_aggregate": [asdict(row) for row in metrics.aggregate_rows]
-                if metrics.aggregate_rows
+                "jmeter_aggregate": [asdict(row) for row in aggregate_rows]
+                if aggregate_rows
                 else [
                     {
                         "label": test_name,
@@ -79,6 +80,28 @@ class ReportBuilder:
                 "Detailed Observations and Analysis",
             },
         )
+
+    def _build_single_run_aggregate_view(
+        self,
+        test_name: str,
+        metrics: TestMetrics,
+    ) -> tuple[list[str], list[AggregateRow]]:
+        rows = list(metrics.aggregate_rows)
+        if not rows:
+            return list(metrics.transaction_names), []
+
+        non_total = [row for row in rows if row.label != "TOTAL"]
+        total_rows = [row for row in rows if row.label == "TOTAL"]
+
+        # When JMeter emits both parent transaction controller sample and child sampler rows,
+        # suppress the parent row from presentation so transaction-level insights stay visible.
+        if len(non_total) > 1:
+            filtered = [row for row in non_total if row.label.strip() != test_name.strip()]
+            if filtered:
+                non_total = filtered
+
+        transaction_names = [row.label for row in non_total]
+        return transaction_names, [*non_total, *total_rows]
 
     def build_comparison_report(
         self,

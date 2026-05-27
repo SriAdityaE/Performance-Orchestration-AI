@@ -95,6 +95,7 @@
 - [x] T030 Validate the end-to-end operator flow described in specs/001-perf-test-orchestration/quickstart.md
 - [x] T031 Remove duplicate `test_started` preflight notification from the one-terminal workflow in scripts/Run-OneTerminal.ps1
 - [x] T032 Fix Slack final report delivery to send real block payloads and include JMeter aggregate rows in tools/slack-notifier/src/cli.ts and tools/slack-notifier/src/formatters/singleRun.ts
+- [x] T033 Fix single-run final report presentation to preserve transaction-level labels, suppress parent controller labels when child rows exist, and show target-miss as a distinct status in src/perf_orchestrator/runner/vm_runner.py, src/perf_orchestrator/services/report_builder.py, and tools/slack-notifier/src/formatters/singleRun.ts
 
 ---
 

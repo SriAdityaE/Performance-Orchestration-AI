@@ -67,8 +67,9 @@ Required top-level fields:
   - `transactions_detected`
   - `transaction_names`
   - `jmeter_aggregate` rows with one entry per discovered label plus `TOTAL`
+   - parent transaction-controller labels must be suppressed from the visible transaction list when child transaction labels are present in the parsed JTL
 15. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
-16. For single-run final notifications, the Slack payload must include a readable JMeter aggregate section (transaction label rows plus `TOTAL`) and must be posted as Slack blocks (not JSON-as-text).
+16. For single-run final notifications, the Slack payload must include a readable JMeter aggregate section (transaction label rows plus `TOTAL`), must show a distinct target-miss state when expected throughput is not met but base thresholds pass, and must be posted as Slack blocks (not JSON-as-text).
 
 ## Operational Notes
 

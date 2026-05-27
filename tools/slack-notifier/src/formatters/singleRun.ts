@@ -16,7 +16,7 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
 
   const testName = String(summary.test_name ?? "Performance Test");
   const environment = String(summary.environment ?? "N/A");
-  const validationPassed = execution.validation_passed === true ? "✓ PASSED" : "✗ FAILED";
+  const validationPassed = resolveValidationBadge(execution);
 
   const blocks: Record<string, unknown>[] = [
     {
@@ -167,6 +167,29 @@ function formatExecutionAsMarkdown(execution: Record<string, unknown>): string {
     `• *Duration:* ${duration} minutes\n\n` +
     checksText
   );
+}
+
+function resolveValidationBadge(execution: Record<string, unknown>): string {
+  if (execution.validation_passed === true) {
+    return "✓ PASSED";
+  }
+
+  const thresholdChecks = execution.threshold_checks as Record<string, boolean> | undefined;
+  const targetChecks = execution.target_checks as Record<string, boolean> | undefined;
+  const thresholdsPassed =
+    thresholdChecks && Object.values(thresholdChecks).length > 0
+      ? Object.values(thresholdChecks).every((value) => value === true)
+      : false;
+  const hasTargetMiss =
+    targetChecks && Object.values(targetChecks).length > 0
+      ? Object.values(targetChecks).some((value) => value === false)
+      : false;
+
+  if (thresholdsPassed && hasTargetMiss) {
+    return "! TARGET MISSED";
+  }
+
+  return "✗ FAILED";
 }
 
 function formatValue(value: unknown): string {

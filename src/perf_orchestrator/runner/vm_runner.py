@@ -79,7 +79,15 @@ class JMeterCommandRunner:
             "-l",
             str(result_file),
         ]
-        for key, value in test.extra_args.items():
+        effective_extra_args = {
+            # Capture child sampler rows when a transaction controller emits parent samples,
+            # so aggregate reporting can include real per-transaction labels.
+            "jmeter.save.saveservice.subresults": "true",
+            "jmeter.save.saveservice.label": "true",
+        }
+        effective_extra_args.update(test.extra_args)
+
+        for key, value in effective_extra_args.items():
             command.append(f"-J{key}={value}")
 
         max_attempts = 1 + self._settings.retry_policy.vm_runner_start_retries

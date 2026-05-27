@@ -160,6 +160,33 @@ def test_report_builder_uses_transaction_rows_when_available(tmp_path) -> None:
     assert execution["test_plan_path"].endswith("Xinspect_JMeterTest.jmx")
 
 
+def test_report_builder_hides_parent_test_label_when_child_transactions_exist(tmp_path) -> None:
+    validator = MetricsValidator(ValidationThresholds())
+    builder = ReportBuilder()
+    parsed_file = tmp_path / "result.jtl"
+    parsed_file.write_text(
+        "timeStamp,elapsed,label,responseCode,responseMessage,threadName,success\n"
+        "1716400000000,10,Inspect_Load test,200,OK,thread-1,true\n"
+        "1716400001000,12,Txn_A,200,OK,thread-1,true\n"
+        "1716400002000,8,Txn_B,200,OK,thread-1,true\n",
+        encoding="utf-8",
+    )
+    parsed_metrics = parse_jmeter_csv(parsed_file, planned_duration_minutes=1)
+    validation = validator.validate(parsed_metrics)
+
+    report = builder.build_single_run_report(
+        test_name="Inspect_Load test",
+        environment_label="PRD-VM",
+        metrics=parsed_metrics,
+        validation=validation,
+    )
+
+    summary = report["Test Summary"]
+    assert summary["transactions_detected"] == 2
+    assert summary["transaction_names"] == ["Txn_A", "Txn_B"]
+    assert [row["label"] for row in summary["jmeter_aggregate"]] == ["Txn_A", "Txn_B", "TOTAL"]
+
+
 def test_comparison_report_includes_both_runs_and_observations() -> None:
     comparator = MetricsComparator()
     builder = ReportBuilder()
