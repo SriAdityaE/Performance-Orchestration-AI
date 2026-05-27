@@ -3,7 +3,10 @@ export type SlackRenderedMessage = {
   blocks: Record<string, unknown>[];
 };
 
-export function formatSingleRunReport(payload: Record<string, unknown>): string | SlackRenderedMessage {
+export function formatSingleRunReport(
+  payload: Record<string, unknown>,
+  context?: { occurredAt?: string },
+): string | SlackRenderedMessage {
   const summary = (payload["Test Summary"] as Record<string, unknown> | undefined) ?? undefined;
   const execution =
     (payload["Test Execution Summary"] as Record<string, unknown> | undefined) ?? undefined;
@@ -83,6 +86,22 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
   }
 
   blocks.push({
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: `*Senior Architect Review*\n${buildSeniorReviewLine(validationPassed)}`,
+    },
+  });
+
+  blocks.push({
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: buildEmailDraftMarkdown(testName, context?.occurredAt),
+    },
+  });
+
+  blocks.push({
     type: "divider",
   });
 
@@ -100,6 +119,39 @@ export function formatSingleRunReport(payload: Record<string, unknown>): string 
     text: `Performance Test Report: ${testName} (${validationPassed})`,
     blocks,
   };
+}
+
+function buildSeniorReviewLine(validationBadge: string): string {
+  if (validationBadge === "✓ PASSED") {
+    return "As Senior Architect Performance Engineer, this review indicates the run is healthy and suitable for stakeholder circulation.";
+  }
+  if (validationBadge === "! TARGET MISSED") {
+    return "As Senior Architect Performance Engineer, this review is good from a stability perspective; however, expected throughput target was missed and requires capacity tuning before sign-off.";
+  }
+  return "As Senior Architect Performance Engineer, this review identifies critical issues that must be remediated before wider communication or rollout.";
+}
+
+function buildEmailDraftMarkdown(testName: string, occurredAt?: string): string {
+  const reportDate = formatReportDate(occurredAt);
+  const subject = `${testName} ${reportDate}`;
+  return (
+    `*Email Draft (Ready to Send)*\n` +
+    `Subject: ${subject}\n\n` +
+    `Hello Team,\n\n` +
+    `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
+    `The attached summary includes validation checks, aggregate metrics, and architect-level observations.\n\n` +
+    `Regards,\n` +
+    `Senior Architect Performance Engineer`
+  );
+}
+
+function formatReportDate(occurredAt?: string): string {
+  const parsed = occurredAt ? new Date(occurredAt) : new Date();
+  if (Number.isNaN(parsed.getTime())) {
+    const fallback = new Date();
+    return `${fallback.getUTCFullYear()}-${String(fallback.getUTCMonth() + 1).padStart(2, "0")}-${String(fallback.getUTCDate()).padStart(2, "0")}`;
+  }
+  return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, "0")}-${String(parsed.getUTCDate()).padStart(2, "0")}`;
 }
 
 function formatSummaryMetricsAsMarkdown(summary: Record<string, unknown>): string {

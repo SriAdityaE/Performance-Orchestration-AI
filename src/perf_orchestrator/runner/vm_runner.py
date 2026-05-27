@@ -465,10 +465,12 @@ class VmRunner:
 
         first_test, first_summary = completed_runs[0]
         second_test, second_summary = completed_runs[1]
+        first_label = f"Run 1 - {first_test.test_name}"
+        second_label = f"Run 2 - {second_test.test_name}"
         comparison = self._comparator.compare(
-            first_test.test_name,
+            first_label,
             parse_metrics(first_summary["metrics"]),
-            second_test.test_name,
+            second_label,
             parse_metrics(second_summary["metrics"]),
         )
         recommendation = "Investigate before approval" if any(
@@ -476,8 +478,8 @@ class VmRunner:
         ) else "Approve for rollout"
         return self._report_builder.build_comparison_report(
             current_rounds=(
-                (first_test.test_name, parse_metrics(first_summary["metrics"])),
-                (second_test.test_name, parse_metrics(second_summary["metrics"])),
+                (first_label, parse_metrics(first_summary["metrics"])),
+                (second_label, parse_metrics(second_summary["metrics"])),
             ),
             comparison=comparison,
             recommendation=recommendation,

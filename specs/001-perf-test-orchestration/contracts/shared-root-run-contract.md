@@ -70,6 +70,8 @@ Required top-level fields:
    - parent transaction-controller labels must be suppressed from the visible transaction list when child transaction labels are present in the parsed JTL
 15. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
 16. For single-run final notifications, the Slack payload must include a readable JMeter aggregate section (transaction label rows plus `TOTAL`), must show a distinct target-miss state when expected throughput is not met but base thresholds pass, and must be posted as Slack blocks (not JSON-as-text).
+17. Final Slack report blocks (single-run and two-run) include a Senior Architect review narrative plus an email-ready draft section whose subject includes test identity and report date.
+18. Two-run comparative summaries must preserve both runs even when test names are identical by using round-qualified labels (for example, `Run 1 - <test_name>` and `Run 2 - <test_name>`).
 
 ## Operational Notes
 

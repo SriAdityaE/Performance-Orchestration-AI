@@ -146,6 +146,59 @@ def test_vm_runner_archives_stale_queued_request(tmp_path: Path) -> None:
     assert (settings.requests_dir / "stale" / f"{result.run_paths.run_id}.json").exists()
 
 
+def test_vm_runner_two_run_request_generates_comparison_report(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+    request = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="Inspect_Load test",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=1,
+            ),
+            TestDefinition(
+                test_name="Inspect_Load test",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=120,
+                ramp_up_seconds=30,
+                duration_minutes=1,
+            ),
+        )
+    )
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+    result = orchestrator.start(request)
+
+    notifier = RecordingNotifier()
+    runner = VmRunner(settings=settings, notifier=notifier, command_runner=FakeCommandRunner())
+
+    processed_run_id = runner.process_next_run()
+
+    assert processed_run_id == result.run_paths.run_id
+    status_payload = json.loads(result.run_paths.status_path.read_text(encoding="utf-8"))
+    assert status_payload["state"] == "completed"
+    assert len(status_payload["tests"]) == 2
+    assert status_payload["tests"][0]["state"] == "completed"
+    assert status_payload["tests"][1]["state"] == "completed"
+
+    final_report = json.loads(Path(status_payload["final_report_latest_path"]).read_text(encoding="utf-8"))
+    assert "Today's Test Results Summary" in final_report
+    assert "Test Execution Summary" in final_report
+    assert "Detailed Observations and Analysis" in final_report
+    assert "Recommendation or Conclusion" in final_report
+    assert len(final_report["Today's Test Results Summary"]) == 2
+
+
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:
     payload = {
         "transactions": 4,

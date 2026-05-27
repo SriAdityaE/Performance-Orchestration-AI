@@ -78,8 +78,8 @@ function formatFinalReport(event: LifecycleEvent): SlackPostPayload {
   const isComparisonReport = reportSectionKeys.includes("Today's Test Results Summary");
 
   const rendered = isComparisonReport
-    ? formatComparisonReport(reportPayload)
-    : formatSingleRunReport(reportPayload);
+    ? formatComparisonReport(reportPayload, { occurredAt: event.occurred_at })
+    : formatSingleRunReport(reportPayload, { occurredAt: event.occurred_at });
 
   if (typeof rendered === "string") {
     const titlePrefix = customFormat?.title && typeof customFormat.title === "string"
