@@ -140,8 +140,8 @@ function buildEmailDraftMarkdown(testName: string, occurredAt?: string): string 
     `Hello Team,\n\n` +
     `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
     `The attached summary includes validation checks, aggregate metrics, and architect-level observations.\n\n` +
-    `Regards,\n` +
-    `Senior Architect Performance Engineer`
+    `Thanks,\n` +
+    `Sri Aditya`
   );
 }
 
