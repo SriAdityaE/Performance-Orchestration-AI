@@ -20,8 +20,22 @@ export function formatSingleRunReport(
   const testName = String(summary.test_name ?? "Performance Test");
   const environment = String(summary.environment ?? "N/A");
   const validationPassed = resolveValidationBadge(execution);
+  const reportDate = formatReportDate(context?.occurredAt);
+  const subject = `${testName} ${reportDate}`;
 
   const blocks: Record<string, unknown>[] = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text:
+          `*Subject:* ${subject}\n\n` +
+          "Hello Team,\n\n" +
+          `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
+          "The attached summary includes validation checks, aggregate metrics, and architect-level observations. " +
+          "Please find the below detailed observations.",
+      },
+    },
     {
       type: "header",
       text: {
@@ -89,15 +103,7 @@ export function formatSingleRunReport(
     type: "section",
     text: {
       type: "mrkdwn",
-      text: `*Senior Architect Review*\n${buildSeniorReviewLine(validationPassed)}`,
-    },
-  });
-
-  blocks.push({
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: buildEmailDraftMarkdown(testName, context?.occurredAt),
+      text: "Thanks,\nSri Aditya",
     },
   });
 
@@ -119,30 +125,6 @@ export function formatSingleRunReport(
     text: `Performance Test Report: ${testName} (${validationPassed})`,
     blocks,
   };
-}
-
-function buildSeniorReviewLine(validationBadge: string): string {
-  if (validationBadge === "✓ PASSED") {
-    return "As Senior Architect Performance Engineer, this review indicates the run is healthy and suitable for stakeholder circulation.";
-  }
-  if (validationBadge === "! TARGET MISSED") {
-    return "As Senior Architect Performance Engineer, this review is good from a stability perspective; however, expected throughput target was missed and requires capacity tuning before sign-off.";
-  }
-  return "As Senior Architect Performance Engineer, this review identifies critical issues that must be remediated before wider communication or rollout.";
-}
-
-function buildEmailDraftMarkdown(testName: string, occurredAt?: string): string {
-  const reportDate = formatReportDate(occurredAt);
-  const subject = `${testName} ${reportDate}`;
-  return (
-    `*Email Draft (Ready to Send)*\n` +
-    `Subject: ${subject}\n\n` +
-    `Hello Team,\n\n` +
-    `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
-    `The attached summary includes validation checks, aggregate metrics, and architect-level observations.\n\n` +
-    `Thanks,\n` +
-    `Sri Aditya`
-  );
 }
 
 function formatReportDate(occurredAt?: string): string {

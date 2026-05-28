@@ -96,7 +96,8 @@
 - [x] T031 Remove duplicate `test_started` preflight notification from the one-terminal workflow in scripts/Run-OneTerminal.ps1
 - [x] T032 Fix Slack final report delivery to send real block payloads and include JMeter aggregate rows in tools/slack-notifier/src/cli.ts and tools/slack-notifier/src/formatters/singleRun.ts
 - [x] T033 Fix single-run final report presentation to preserve transaction-level labels, suppress parent controller labels when child rows exist, and show target-miss as a distinct status in src/perf_orchestrator/runner/vm_runner.py, src/perf_orchestrator/services/report_builder.py, and tools/slack-notifier/src/formatters/singleRun.ts
-- [x] T034 Add Senior Architect review narrative and email-ready subject/body sections for single-run and two-run final Slack reports, and harden two-run labeling for duplicate test names in tools/slack-notifier/src/formatters/singleRun.ts, tools/slack-notifier/src/formatters/comparison.ts, tools/slack-notifier/src/cli.ts, and src/perf_orchestrator/runner/vm_runner.py
+- [x] T034 Add email-ready subject/intro at the top and simple closing signature for single-run and two-run final Slack reports, and harden two-run labeling for duplicate test names in tools/slack-notifier/src/formatters/singleRun.ts, tools/slack-notifier/src/formatters/comparison.ts, tools/slack-notifier/src/cli.ts, and src/perf_orchestrator/runner/vm_runner.py
+- [x] T035 Remove Senior Architect review narrative block from single-run and two-run Slack report formatters in tools/slack-notifier/src/formatters/singleRun.ts and tools/slack-notifier/src/formatters/comparison.ts
 
 ---
 

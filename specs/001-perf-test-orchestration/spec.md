@@ -104,7 +104,7 @@ An operator provides a custom reporting format for Slack delivery, and the syste
 - **FR-027**: Any script change MUST pass local PowerShell parse checks and targeted unit tests before commit/push, and the successful validation output MUST be available in terminal history for auditability.
 - **FR-028**: The one-terminal VM command (`scripts/Run-OneTerminal.ps1`) MUST send a startup Slack notification by default when notification channel is `slack` or `both`, before submitting and processing the run.
 - **FR-029**: The one-terminal VM command (`scripts/Run-OneTerminal.ps1`) MUST provide a fresh-start execution mode by automatically archiving active request pointers before submit and by supporting optional termination of previously running runner/JMeter processes.
-- **FR-030**: The default single-run report observations MUST be generated in a senior performance architect style suitable for business stakeholder sharing without manual rewriting.
+- **FR-030**: The default single-run and two-run final Slack reports MUST open with an email-ready subject line and introduction paragraph (test name, date, and brief description of what is attached), present all detailed metrics and observations in the body, and close with a brief signature. No separate Senior Architect review narrative block shall appear in the output.
 
 ### Key Entities *(include if feature involves data)*
 

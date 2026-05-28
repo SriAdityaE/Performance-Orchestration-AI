@@ -23,13 +23,26 @@ export function formatComparisonReport(
   const reportDate = formatReportDate(context?.occurredAt);
   const subjectLabel = runNames[0] ?? "Performance Comparison";
   const emailSubject = `${subjectLabel} ${reportDate}`;
+  const runCount = runNames.length;
 
   const blocks: Record<string, unknown>[] = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text:
+          `*Subject:* ${emailSubject}\n\n` +
+          "Hello Team,\n\n" +
+          `Please find the detailed performance comparison for ${runNames.join(" vs ")} executed on ${reportDate}. ` +
+          "The attached summary includes validation checks, baseline-candidate deltas, and architect-level observations. " +
+          "Please find the below detailed observations.",
+      },
+    },
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: "Performance Comparison Report (2 Runs)",
+        text: `Performance Comparison Report (${runCount} Runs)`,
       },
     },
     {
@@ -77,24 +90,7 @@ export function formatComparisonReport(
     type: "section",
     text: {
       type: "mrkdwn",
-      text:
-        "*Senior Architect Review*\n" +
-        "As Senior Architect Performance Engineer, the two-run comparison has been reviewed and is suitable for stakeholder communication with baseline-vs-candidate traceability.",
-    },
-  });
-
-  blocks.push({
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text:
-        "*Email Draft (Ready to Send)*\n" +
-        `Subject: ${emailSubject}\n\n` +
-        "Hello Team,\n\n" +
-        `Please find the detailed two-run performance comparison for ${runNames.join(" vs ")} executed on ${reportDate}. ` +
-        "The report includes baseline-candidate deltas, observed risk areas, and recommendation for next action.\n\n" +
-        "Regards,\n" +
-        "Senior Architect Performance Engineer",
+      text: "Thanks,\nSri Aditya",
     },
   });
 

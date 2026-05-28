@@ -199,6 +199,71 @@ def test_vm_runner_two_run_request_generates_comparison_report(tmp_path: Path) -
     assert len(final_report["Today's Test Results Summary"]) == 2
 
 
+def test_vm_runner_historical_comparison_triggers_on_second_run(tmp_path: Path) -> None:
+    """Simulates Run-OneTerminal.ps1 run sequence: run 1 completes, run 2 finds it and includes
+    a Historical Comparison section in the observations — confirming the lookup works."""
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+
+    def _make_request() -> RunRequest:
+        return RunRequest(
+            tests=(
+                TestDefinition(
+                    test_name="Inspect_Load test",
+                    environment_label="PRD-VM",
+                    test_plan_path=tmp_path / "plan.jmx",
+                    user_count=100,
+                    ramp_up_seconds=30,
+                    duration_minutes=5,
+                    expected_throughput=200.0,
+                ),
+            )
+        )
+
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+
+    # --- Run 1 ---
+    result1 = orchestrator.start(_make_request())
+    runner1 = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed1 = runner1.process_next_run()
+    assert processed1 == result1.run_paths.run_id
+    status1 = json.loads(result1.run_paths.status_path.read_text(encoding="utf-8"))
+    assert status1["state"] == "completed"
+
+    # --- Run 2 (simulates next Run-OneTerminal.ps1 invocation) ---
+    result2 = orchestrator.start(_make_request())
+    notifier2 = RecordingNotifier()
+    runner2 = VmRunner(settings=settings, notifier=notifier2, command_runner=FakeCommandRunner())
+    processed2 = runner2.process_next_run()
+    assert processed2 == result2.run_paths.run_id
+
+    status2 = json.loads(result2.run_paths.status_path.read_text(encoding="utf-8"))
+    assert status2["state"] == "completed"
+
+    # Verify comparison was included in observations
+    final_report = json.loads(Path(status2["final_report_latest_path"]).read_text(encoding="utf-8"))
+    observations = final_report.get("Detailed Observations and Analysis", [])
+    assert any("Historical Comparison" in line for line in observations), (
+        "Expected 'Historical Comparison' in observations — cross-run comparison did not trigger"
+    )
+    assert any("Best Run Recommendation" in line for line in observations), (
+        "Expected 'Best Run Recommendation' in observations"
+    )
+
+    # The final_report_ready event payload should carry comparison data
+    final_event = next(e for e in notifier2.events if e.event_type == "final_report_ready")
+    report_payload = final_event.details["report_payload"]
+    obs = report_payload.get("Detailed Observations and Analysis", [])
+    assert any("Historical Comparison" in str(line) for line in obs)
+
+
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:
     payload = {
         "transactions": 4,
