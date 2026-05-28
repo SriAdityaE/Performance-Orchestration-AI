@@ -19,9 +19,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment files
+# Environment files — keep the example template but never commit real values
 .env
 .env.*
+!.env.example
 
 # OS / editor
 .DS_Store
