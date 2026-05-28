@@ -1,0 +1,14 @@
+{
+  "name": "performance_ai_orchestration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:notifier": "tsc -p tools/slack-notifier/tsconfig.json",
+    "check:notifier": "tsc -p tools/slack-notifier/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}

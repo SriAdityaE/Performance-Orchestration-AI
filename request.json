@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "test_name": "My Load Test",
+      "environment_label": "PERF-VM",
+      "test_plan_path": "L:/path/to/your/TestPlan.jmx",
+      "ramp_up_seconds": 30,
+      "duration_minutes": 5,
+      "expected_throughput": 200.0
+    }
+  ],
+  "notification": {
+    "channel": "slack"
+  }
+}
