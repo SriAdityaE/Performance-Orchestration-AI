@@ -6,6 +6,18 @@ from dataclasses import asdict
 from perf_orchestrator.models.results import AggregateRow, ComparisonSummary, TestMetrics, ValidationResult
 
 
+def _run_id_to_date_label(run_id: str) -> str:
+    """Convert run-YYYYMMDDHHMMSS-hash to '2026-05-28 16:12', or return the raw ID on failure."""
+    try:
+        parts = run_id.split("-")
+        if len(parts) >= 3 and len(parts[1]) == 14 and parts[1].isdigit():
+            ts = parts[1]
+            return f"{ts[:4]}-{ts[4:6]}-{ts[6:8]} {ts[8:10]}:{ts[10:12]}"
+    except Exception:
+        pass
+    return run_id
+
+
 class ReportBuilder:
     def build_single_run_report(
         self,
@@ -229,12 +241,11 @@ class ReportBuilder:
 
         comparison_lines: list[str] = []
         if comparison_summary:
+            baseline_date = _run_id_to_date_label(comparison_summary.baseline_label)
             comparison_lines.append(
-                f"Historical Comparison: Baseline run '{comparison_summary.baseline_label}' vs current run '{comparison_summary.candidate_label}'."
+                f"Historical Comparison vs. previous run ({baseline_date}):"
             )
-            comparison_lines.extend(
-                f"Test Observation: {observation}" for observation in comparison_summary.observations
-            )
+            comparison_lines.extend(list(comparison_summary.observations))
         if best_run_recommendation:
             comparison_lines.append(f"Best Run Recommendation: {best_run_recommendation}")
 

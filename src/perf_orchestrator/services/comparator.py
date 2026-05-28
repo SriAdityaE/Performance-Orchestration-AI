@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from perf_orchestrator.models.results import ComparisonDelta, ComparisonSummary, TestMetrics
 
+_METRIC_DISPLAY_NAMES: dict[str, str] = {
+    "throughput": "Throughput",
+    "p95_response_ms": "P95 Response",
+    "p99_response_ms": "P99 Response",
+    "error_rate_pct": "Error Rate",
+}
+
 
 class MetricsComparator:
     def compare(
@@ -75,10 +82,11 @@ class MetricsComparator:
         )
 
     def _observation(self, delta: ComparisonDelta) -> str:
+        display = _METRIC_DISPLAY_NAMES.get(delta.metric_name, delta.metric_name)
         if delta.classification == "stable":
-            return f"{delta.metric_name} remained stable ({delta.delta_pct:.2f}% change)"
+            return f"{display}: remained stable ({delta.delta_pct:.2f}% change)"
         if delta.classification == "improvement":
-            return f"{delta.metric_name} improved by {abs(delta.delta_pct):.2f}%"
+            return f"{display}: improved by {abs(delta.delta_pct):.2f}%"
         if delta.classification == "regression":
-            return f"{delta.metric_name} regressed by {abs(delta.delta_pct):.2f}%"
-        return f"{delta.metric_name} comparison is inconclusive"
+            return f"{display}: regressed by {abs(delta.delta_pct):.2f}%"
+        return f"{display}: comparison is inconclusive"
