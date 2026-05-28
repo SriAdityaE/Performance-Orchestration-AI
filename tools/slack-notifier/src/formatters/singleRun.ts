@@ -221,7 +221,7 @@ function resolveValidationBadge(execution: Record<string, unknown>): string {
       : false;
 
   if (thresholdsPassed && hasTargetMiss) {
-    return "! TARGET MISSED";
+    return "! MISSED";
   }
 
   return "✗ FAILED";

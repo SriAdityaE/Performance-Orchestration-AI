@@ -84,19 +84,19 @@ def test_vm_runner_processes_next_run_and_writes_report(tmp_path: Path) -> None:
     assert Path(status_payload["final_report_latest_path"]).exists()
     assert "execution_stamp" in status_payload
     assert "execution_date_bucket" in status_payload
-    assert re.match(r"^\d{2}-\d{2}\([A-Za-z]{3}-\d{1,2}(st|nd|rd|th)\)$", status_payload["execution_date_bucket"])
+    assert re.match(r"^\d{4}-\d{2}-\d{2}$", status_payload["execution_date_bucket"])
     assert "jtl" in status_payload["tests"][0]["jtl_path"]
     jtl_path = Path(status_payload["tests"][0]["jtl_path"])
     assert jtl_path.exists()
     run_slot = status_payload["tests"][0]["run_slot"]
-    assert run_slot.startswith("Run1_")
+    assert run_slot.startswith("round1_")
     assert jtl_path.parent.name == run_slot
     assert jtl_path.parent.parent.name == status_payload["execution_date_bucket"]
     assert Path(status_payload["tests"][0]["summary_path"]).exists()
     assert "external_testlogs_dir" in status_payload
     assert Path(status_payload["tests"][0]["external_testlogs_slot"]).exists()
     assert re.match(
-        r"^\d{8}_baseline_round1_\d{6}$",
+        r"^round1_\d{8}_\d{6}$",
         status_payload["tests"][0]["testlogs_slot_name"],
     )
     assert Path(status_payload["external_final_report_path"]).exists()

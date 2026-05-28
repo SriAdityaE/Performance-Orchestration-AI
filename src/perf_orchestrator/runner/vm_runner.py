@@ -37,15 +37,8 @@ def _read_log_tail(path: Path, max_lines: int = 20) -> str:
     return "\n".join(content[-max_lines:])
 
 
-def _ordinal_suffix(day: int) -> str:
-    if 11 <= day % 100 <= 13:
-        return "th"
-    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-
-
 def _format_date_bucket(dt: datetime) -> str:
-    day = dt.day
-    return f"{dt.strftime('%d-%m')}({dt.strftime('%b')}-{day}{_ordinal_suffix(day)})"
+    return dt.strftime("%Y-%m-%d")
 
 
 def _sanitize_path_segment(value: str) -> str:
@@ -233,7 +226,9 @@ class VmRunner:
         execution_reports_dir.mkdir(parents=True, exist_ok=True)
         external_run_dir: Path | None = None
         if self._settings.test_logs_root:
-            external_run_dir = self._settings.test_logs_root / run_paths.run_id / date_bucket
+            first_test_name_slug = _sanitize_path_segment(request.tests[0].test_name) if request.tests else "test"
+            run_date_str = run_started_at.strftime("%Y-%m-%d")
+            external_run_dir = self._settings.test_logs_root / f"{first_test_name_slug}-{run_date_str}"
             external_run_dir.mkdir(parents=True, exist_ok=True)
 
         status_payload["state"] = "running"
@@ -252,11 +247,10 @@ class VmRunner:
 
         for index, test in enumerate(request.tests, start=1):
             test_stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-            run_slot = f"Run{index}_{test_stamp}"
+            run_slot = f"round{index}_{test_stamp}"
             test_date = run_started_at.strftime("%Y%m%d")
             test_time = datetime.now(UTC).strftime("%H%M%S")
-            test_name_slug = _sanitize_path_segment(test.test_name)
-            testlogs_slot = f"{test_date}_{test_name_slug}_round{index}_{test_time}"
+            testlogs_slot = f"round{index}_{test_date}_{test_time}"
             test_artifacts_dir = execution_artifacts_dir / run_slot
             test_reports_dir = execution_reports_dir / run_slot
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)
