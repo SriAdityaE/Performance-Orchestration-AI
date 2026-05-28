@@ -96,7 +96,8 @@ It preserves discovered transaction labels from the parsed JTL/CSV output.
 Run local script parse checks and targeted tests before pushing script changes:
 
 ```powershell
-Set-Location "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project"
+# Run from your repository root
+Set-Location "<your-repo-root>"
 foreach ($file in @('scripts\\Run-OneTerminal.ps1','Start-LocalSubmit.ps1','scripts\\Start-LocalSubmit.ps1','Start-VmRunner.ps1','scripts\\Start-VmRunner.ps1')) { [void][scriptblock]::Create((Get-Content $file -Raw)); Write-Host "OK $file" }
 python -m pytest tests/unit/test_config.py tests/unit/test_vm_runner.py -q
 ```

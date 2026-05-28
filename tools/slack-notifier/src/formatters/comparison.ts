@@ -5,7 +5,7 @@ export type SlackRenderedMessage = {
 
 export function formatComparisonReport(
   payload: Record<string, unknown>,
-  context?: { occurredAt?: string },
+  context?: { occurredAt?: string; signerName?: string },
 ): string | SlackRenderedMessage {
   const todaySummary = (payload["Today's Test Results Summary"] as Record<string, unknown> | undefined) ?? undefined;
   const execution = (payload["Test Execution Summary"] as Record<string, unknown> | undefined) ?? undefined;
@@ -24,6 +24,7 @@ export function formatComparisonReport(
   const subjectLabel = runNames[0] ?? "Performance Comparison";
   const emailSubject = `${subjectLabel} ${reportDate}`;
   const runCount = runNames.length;
+  const signerName = context?.signerName ?? "Performance Team";
 
   const blocks: Record<string, unknown>[] = [
     {
@@ -90,7 +91,7 @@ export function formatComparisonReport(
     type: "section",
     text: {
       type: "mrkdwn",
-      text: "Thanks,\nSri Aditya",
+      text: `Thanks,\n${signerName}`,
     },
   });
 

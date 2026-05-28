@@ -5,7 +5,7 @@ export type SlackRenderedMessage = {
 
 export function formatSingleRunReport(
   payload: Record<string, unknown>,
-  context?: { occurredAt?: string },
+  context?: { occurredAt?: string; signerName?: string },
 ): string | SlackRenderedMessage {
   const summary = (payload["Test Summary"] as Record<string, unknown> | undefined) ?? undefined;
   const execution =
@@ -22,6 +22,7 @@ export function formatSingleRunReport(
   const validationPassed = resolveValidationBadge(execution);
   const reportDate = formatReportDate(context?.occurredAt);
   const subject = `${testName} ${reportDate}`;
+  const signerName = context?.signerName ?? "Performance Team";
 
   const blocks: Record<string, unknown>[] = [
     {
@@ -103,7 +104,7 @@ export function formatSingleRunReport(
     type: "section",
     text: {
       type: "mrkdwn",
-      text: "Thanks,\nSri Aditya",
+      text: `Thanks,\n${signerName}`,
     },
   });
 

@@ -21,10 +21,10 @@ All credentials, webhook URLs, and environment-specific endpoints must be suppli
 
 The platform shall support the following operating model and environment constraints:
 
-- Shared execution root: `PERF_SHARED_ROOT`
-- Local shared root path: `C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance_TestExecution&Reporting`
-- VM shared root path: `L:\MCP\Performance_TestExecution-Reporting`
-- VM JMeter home: `JMETER_HOME=L:\apache-jmeter-5.5_New\apache-jmeter-5.5`
+- Shared execution root: `PERF_SHARED_ROOT` (set this env var to your shared-root folder)
+- Local shared root path: set via `PERF_SHARED_ROOT` — example: `<your-repo-root>\shared-root`
+- VM shared root path: set via `PERF_SHARED_ROOT` on the VM — example: `L:\MCP\Performance_TestExecution-Reporting`
+- VM JMeter home: set via `JMETER_HOME` — example: `L:\apache-jmeter-<version>\apache-jmeter-<version>`
 - Notification channel values allowed: `terminal`, `teams`, `slack`, `both`
 - Default notification mode for this project: `slack`
 

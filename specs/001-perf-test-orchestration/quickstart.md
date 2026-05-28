@@ -177,7 +177,8 @@ Minimal request example:
 Before committing or pushing any script changes, run local verification and keep the successful output in terminal history.
 
 ```powershell
-Set-Location "C:\Users\erraguntlaaditya\OneDrive - Nagarro\Documents\Practice\MCPServer\Performance-Orchestration-AI\SDD-project"
+# Run from your repository root
+Set-Location "<your-repo-root>"
 foreach ($file in @('scripts\\Run-OneTerminal.ps1','Start-LocalSubmit.ps1','scripts\\Start-LocalSubmit.ps1','Start-VmRunner.ps1','scripts\\Start-VmRunner.ps1')) { [void][scriptblock]::Create((Get-Content $file -Raw)); Write-Host "OK $file" }
 python -m pytest tests/unit/test_config.py tests/unit/test_vm_runner.py -q
 ```
