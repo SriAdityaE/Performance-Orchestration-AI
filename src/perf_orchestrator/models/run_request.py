@@ -4,6 +4,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
+MAX_TESTS_PER_REQUEST = 5
+
+
 class RunRequestError(ValueError):
     """Raised when a submitted run request is invalid."""
 
@@ -101,8 +104,10 @@ class RunRequest:
     def validate(self) -> None:
         if not self.tests:
             raise RunRequestError("At least one test is required")
-        if len(self.tests) > 2:
-            raise RunRequestError("No more than two tests are supported in a single request")
+        if len(self.tests) > MAX_TESTS_PER_REQUEST:
+            raise RunRequestError(
+                f"No more than {MAX_TESTS_PER_REQUEST} tests are supported in a single request"
+            )
         for test in self.tests:
             test.validate()
         self.notification.validate()

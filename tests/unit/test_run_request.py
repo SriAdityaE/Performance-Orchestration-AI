@@ -12,7 +12,7 @@ from perf_orchestrator.models.run_request import (
 )
 
 
-def test_run_request_rejects_more_than_two_tests(tmp_path: Path) -> None:
+def test_run_request_rejects_more_than_five_tests(tmp_path: Path) -> None:
     test = TestDefinition(
         test_name="smoke",
         environment_label="vm",
@@ -22,10 +22,25 @@ def test_run_request_rejects_more_than_two_tests(tmp_path: Path) -> None:
         duration_minutes=30,
     )
 
-    request = RunRequest(tests=(test, test, test))
+    request = RunRequest(tests=(test, test, test, test, test, test))
 
     with pytest.raises(RunRequestError):
         request.validate()
+
+
+def test_run_request_accepts_up_to_five_tests(tmp_path: Path) -> None:
+    test = TestDefinition(
+        test_name="smoke",
+        environment_label="vm",
+        test_plan_path=tmp_path / "plan.jmx",
+        user_count=10,
+        ramp_up_seconds=5,
+        duration_minutes=30,
+    )
+
+    request = RunRequest(tests=(test, test, test, test, test))
+
+    request.validate()
 
 
 def test_run_request_serializes_minimum_fields(tmp_path: Path) -> None:

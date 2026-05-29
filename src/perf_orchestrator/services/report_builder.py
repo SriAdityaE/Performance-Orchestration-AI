@@ -127,7 +127,7 @@ class ReportBuilder:
     def build_comparison_report(
         self,
         *,
-        current_rounds: tuple[tuple[str, TestMetrics], tuple[str, TestMetrics]],
+        current_rounds: tuple[tuple[str, TestMetrics], ...],
         comparison: ComparisonSummary,
         recommendation: str,
         custom_format: dict[str, object] | None = None,

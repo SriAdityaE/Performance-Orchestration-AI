@@ -12,7 +12,7 @@ import time
 
 from perf_orchestrator.config import Settings
 from perf_orchestrator.models.events import LifecycleEvent
-from perf_orchestrator.models.run_request import RunRequest, TestDefinition
+from perf_orchestrator.models.run_request import MAX_TESTS_PER_REQUEST, RunRequest, TestDefinition
 from perf_orchestrator.services.comparator import MetricsComparator
 from perf_orchestrator.services.jmeter_parser import parse_jmeter_csv
 from perf_orchestrator.services.notifier import NotificationError, NotifierBridge, TerminalNotifier
@@ -484,24 +484,27 @@ class VmRunner:
                 custom_format=custom_format,
             )
 
-        first_test, first_summary = completed_runs[0]
-        second_test, second_summary = completed_runs[1]
-        first_label = f"Run 1 - {first_test.test_name}"
-        second_label = f"Run 2 - {second_test.test_name}"
+        selected_runs = completed_runs[:MAX_TESTS_PER_REQUEST]
+        labeled_runs = [
+            (
+                f"Run {idx} - {test.test_name}",
+                parse_metrics(summary["metrics"]),
+            )
+            for idx, (test, summary) in enumerate(selected_runs, start=1)
+        ]
+        first_label, first_metrics = labeled_runs[0]
+        last_label, last_metrics = labeled_runs[-1]
         comparison = self._comparator.compare(
             first_label,
-            parse_metrics(first_summary["metrics"]),
-            second_label,
-            parse_metrics(second_summary["metrics"]),
+            first_metrics,
+            last_label,
+            last_metrics,
         )
         recommendation = "Investigate before approval" if any(
             delta.classification == "regression" for delta in comparison.deltas
         ) else "Approve for rollout"
         return self._report_builder.build_comparison_report(
-            current_rounds=(
-                (first_label, parse_metrics(first_summary["metrics"])),
-                (second_label, parse_metrics(second_summary["metrics"])),
-            ),
+            current_rounds=tuple(labeled_runs),
             comparison=comparison,
             recommendation=recommendation,
             custom_format=custom_format,

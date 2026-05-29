@@ -199,6 +199,47 @@ def test_vm_runner_two_run_request_generates_comparison_report(tmp_path: Path) -
     assert len(final_report["Today's Test Results Summary"]) == 2
 
 
+def test_vm_runner_five_run_request_generates_first_to_last_comparison(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+
+    def _test_def() -> TestDefinition:
+        return TestDefinition(
+            test_name="Inspect_Load test",
+            environment_label="PRD-VM",
+            test_plan_path=tmp_path / "plan.jmx",
+            user_count=100,
+            ramp_up_seconds=30,
+            duration_minutes=1,
+        )
+
+    request = RunRequest(tests=(_test_def(), _test_def(), _test_def(), _test_def(), _test_def()))
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+    result = orchestrator.start(request)
+
+    runner = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed_run_id = runner.process_next_run()
+
+    assert processed_run_id == result.run_paths.run_id
+    status_payload = json.loads(result.run_paths.status_path.read_text(encoding="utf-8"))
+    assert status_payload["state"] == "completed"
+
+    final_report = json.loads(Path(status_payload["final_report_latest_path"]).read_text(encoding="utf-8"))
+    summary = final_report["Today's Test Results Summary"]
+    assert len(summary) == 5
+    assert "Run 1 - Inspect_Load test" in summary
+    assert "Run 5 - Inspect_Load test" in summary
+    assert final_report["Test Execution Summary"]["baseline"] == "Run 1 - Inspect_Load test"
+    assert final_report["Test Execution Summary"]["candidate"] == "Run 5 - Inspect_Load test"
+
+
 def test_vm_runner_historical_comparison_triggers_on_second_run(tmp_path: Path) -> None:
     """Simulates Run-OneTerminal.ps1 run sequence: run 1 completes, run 2 finds it and includes
     a Historical Comparison section in the observations — confirming the lookup works."""
