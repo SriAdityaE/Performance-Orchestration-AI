@@ -264,6 +264,64 @@ def test_vm_runner_historical_comparison_triggers_on_second_run(tmp_path: Path) 
     assert any("Run Comparison" in str(line) for line in obs)
 
 
+def test_vm_runner_historical_comparison_fallbacks_without_manifest(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+
+    request_1 = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="Inspect_Load test",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=5,
+            ),
+        )
+    )
+    request_2 = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name=" inspect_load TEST ",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=5,
+            ),
+        )
+    )
+
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+
+    result1 = orchestrator.start(request_1)
+    runner1 = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed1 = runner1.process_next_run()
+    assert processed1 == result1.run_paths.run_id
+
+    # Force fallback path by removing prior manifest and canonical summary.
+    (result1.run_paths.run_dir / "run_request.json").unlink()
+    (result1.run_paths.reports_dir / "test_1_summary.json").unlink()
+
+    result2 = orchestrator.start(request_2)
+    runner2 = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed2 = runner2.process_next_run()
+    assert processed2 == result2.run_paths.run_id
+
+    status2 = json.loads(result2.run_paths.status_path.read_text(encoding="utf-8"))
+    final_report = json.loads(Path(status2["final_report_latest_path"]).read_text(encoding="utf-8"))
+    observations = final_report.get("Detailed Observations and Analysis", [])
+    assert any("Run Comparison" in line for line in observations)
+
+
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:
     payload = {
         "transactions": 4,

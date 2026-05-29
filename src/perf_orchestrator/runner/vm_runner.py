@@ -525,27 +525,42 @@ class VmRunner:
         current_run_id: str,
         current_test_name: str,
     ) -> tuple[str, object] | None:
+        current_test_name_norm = current_test_name.strip().casefold()
+
         for run_dir in sorted(self._settings.runs_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
             if not run_dir.is_dir() or run_dir.name == current_run_id:
                 continue
 
             status_path = run_dir / "status.json"
-            summary_path = run_dir / "reports" / "test_1_summary.json"
             manifest_path = run_dir / "run_request.json"
-            if not status_path.exists() or not summary_path.exists() or not manifest_path.exists():
+            if not status_path.exists():
+                continue
+
+            summary_path = run_dir / "reports" / "test_1_summary.json"
+            if not summary_path.exists():
+                fallback_summaries = sorted((run_dir / "reports").glob("*/round*/summary.json"))
+                if fallback_summaries:
+                    summary_path = fallback_summaries[-1]
+            if not summary_path.exists():
                 continue
 
             status_payload = json.loads(status_path.read_text(encoding="utf-8"))
             if status_payload.get("state") != "completed":
                 continue
 
-            manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-            tests_payload = manifest_payload.get("tests", [])
-            if not tests_payload:
-                continue
+            previous_test_name = ""
+            if manifest_path.exists():
+                manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+                tests_payload = manifest_payload.get("tests", [])
+                if tests_payload:
+                    previous_test_name = str(tests_payload[0].get("test_name", ""))
 
-            previous_test_name = str(tests_payload[0].get("test_name", ""))
-            if previous_test_name != current_test_name:
+            if not previous_test_name:
+                status_tests = status_payload.get("tests", [])
+                if isinstance(status_tests, list) and status_tests:
+                    previous_test_name = str(status_tests[0].get("test_name", ""))
+
+            if previous_test_name.strip().casefold() != current_test_name_norm:
                 continue
 
             summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
