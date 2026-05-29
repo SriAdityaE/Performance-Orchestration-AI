@@ -4,6 +4,7 @@ from perf_orchestrator.models.results import ComparisonDelta, ComparisonSummary,
 
 _METRIC_DISPLAY_NAMES: dict[str, str] = {
     "throughput": "Throughput",
+    "avg_response_ms": "Avg Response",
     "p95_response_ms": "P95 Response",
     "p99_response_ms": "P99 Response",
     "error_rate_pct": "Error Rate",
@@ -20,6 +21,7 @@ class MetricsComparator:
     ) -> ComparisonSummary:
         deltas = (
             self._delta("throughput", baseline.throughput, candidate.throughput, higher_is_better=True),
+            self._delta("avg_response_ms", baseline.avg_response_ms, candidate.avg_response_ms, higher_is_better=False),
             self._delta("p95_response_ms", baseline.p95_response_ms, candidate.p95_response_ms, higher_is_better=False),
             self._delta("p99_response_ms", baseline.p99_response_ms, candidate.p99_response_ms, higher_is_better=False),
             self._delta("error_rate_pct", baseline.error_rate_pct, candidate.error_rate_pct, higher_is_better=False),
@@ -53,7 +55,7 @@ class MetricsComparator:
                 classification = "improvement"
             else:
                 classification = "stable"
-        elif metric_name in {"p95_response_ms", "p99_response_ms"}:
+        elif metric_name in {"avg_response_ms", "p95_response_ms", "p99_response_ms"}:
             if delta_pct > 10:
                 classification = "regression"
             elif delta_pct < -10:

@@ -62,15 +62,15 @@ Required top-level fields:
 10. `final_report_ready` event details include `report_path`, `report_latest_path`, `report_payload`, and `custom_report_format`.
 11. Local and VM `PERF_SHARED_ROOT` values may differ as paths, but they must map to the same physical shared storage.
 12. Local submit wrapper archives existing queued request pointers by default before enqueueing a new run; this can be bypassed with `-SkipQueueCleanup` when FIFO queue processing is required.
-13. VM runner mirrors JTL and report backup files to `TEST_LOG_ROOT` when that path is available (default target: `L:\testlogs`) using per-test folders named `{YYYYMMDD}_{test_name}_round{index}_{HHMMSS}` under the run/date bucket path.
+13. VM runner mirrors JTL and report backup files to `TEST_LOG_ROOT` when that path is available using per-test folders named `round{N}_{YYYYMMDD}_{HHMMSS}` under `{test_name}-{YYYY-MM-DD}/`. The round number `N` increments globally across all runs for that test name and date (round1, round2, round3 ...) so sequential single-test requests produce distinct ordered folders rather than overwriting the same `round1` slot.
 14. For single-run reports, `report_payload["Test Summary"]` includes transaction-level fields derived from parsed JTL labels:
   - `transactions_detected`
   - `transaction_names`
   - `jmeter_aggregate` rows with one entry per discovered label plus `TOTAL`
    - parent transaction-controller labels must be suppressed from the visible transaction list when child transaction labels are present in the parsed JTL
 15. For single-run reports, `report_payload["Test Execution Summary"]["test_plan_path"]` records the executed JMX path used by the VM-side runner.
-16. For single-run final notifications, the Slack payload must include a readable JMeter aggregate section (transaction label rows plus `TOTAL`), must show a distinct target-miss state when expected throughput is not met but base thresholds pass, and must be posted as Slack blocks (not JSON-as-text).
-17. Final Slack report blocks (single-run and two-run) MUST open with an email-ready subject line and introduction paragraph (test name, date, and content description), followed by all metrics and observations, and close with a brief signature line. No separate Senior Architect review narrative block appears in the output.
+16. For single-run final notifications, the Slack payload must include a readable JMeter aggregate section (transaction label rows plus `TOTAL`), and must be posted as Slack blocks (not JSON-as-text). No Status badge field appears in the report body.
+17. Final Slack report blocks (single-run and two-run) MUST open with an email-ready subject line and introduction paragraph (test name, date, and content description), followed by all metrics and observations, and close with a brief signature line. No Status badge field and no separate Senior Architect review narrative block appears in the output. Historical comparison observations MUST use human-readable metric labels and a readable date label for the baseline run; raw run IDs MUST NOT appear in the Slack report body. The comparison section MUST include Throughput, Avg Response, P95 Response, P99 Response, and Error Rate observations.
 18. Two-run comparative summaries must preserve both runs even when test names are identical by using round-qualified labels (for example, `Run 1 - <test_name>` and `Run 2 - <test_name>`).
 
 ## Operational Notes

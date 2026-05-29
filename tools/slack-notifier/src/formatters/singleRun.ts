@@ -19,7 +19,6 @@ export function formatSingleRunReport(
 
   const testName = String(summary.test_name ?? "Performance Test");
   const environment = String(summary.environment ?? "N/A");
-  const validationPassed = resolveValidationBadge(execution);
   const reportDate = formatReportDate(context?.occurredAt);
   const subject = `${testName} ${reportDate}`;
   const signerName = context?.signerName ?? "Performance Team";
@@ -46,16 +45,10 @@ export function formatSingleRunReport(
     },
     {
       type: "section",
-      fields: [
-        {
-          type: "mrkdwn",
-          text: `*Environment:*\n${environment}`,
-        },
-        {
-          type: "mrkdwn",
-          text: `*Status:*\n${validationPassed}`,
-        },
-      ],
+      text: {
+        type: "mrkdwn",
+        text: `*Environment:* ${environment}`,
+      },
     },
   ];
 
@@ -123,7 +116,7 @@ export function formatSingleRunReport(
   });
 
   return {
-    text: `Performance Test Report: ${testName} (${validationPassed})`,
+    text: `Performance Test Report: ${testName}`,
     blocks,
   };
 }
@@ -202,29 +195,6 @@ function formatExecutionAsMarkdown(execution: Record<string, unknown>): string {
     `• *Duration:* ${duration} minutes\n\n` +
     checksText
   );
-}
-
-function resolveValidationBadge(execution: Record<string, unknown>): string {
-  if (execution.validation_passed === true) {
-    return "✓ PASSED";
-  }
-
-  const thresholdChecks = execution.threshold_checks as Record<string, boolean> | undefined;
-  const targetChecks = execution.target_checks as Record<string, boolean> | undefined;
-  const thresholdsPassed =
-    thresholdChecks && Object.values(thresholdChecks).length > 0
-      ? Object.values(thresholdChecks).every((value) => value === true)
-      : false;
-  const hasTargetMiss =
-    targetChecks && Object.values(targetChecks).length > 0
-      ? Object.values(targetChecks).some((value) => value === false)
-      : false;
-
-  if (thresholdsPassed && hasTargetMiss) {
-    return "! MISSED";
-  }
-
-  return "✗ FAILED";
 }
 
 function formatValue(value: unknown): string {

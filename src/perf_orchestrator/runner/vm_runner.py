@@ -231,6 +231,14 @@ class VmRunner:
             external_run_dir = self._settings.test_logs_root / f"{first_test_name_slug}-{run_date_str}"
             external_run_dir.mkdir(parents=True, exist_ok=True)
 
+        # Count existing round dirs so sequential single-test runs increment: round1, round2, round3 ...
+        external_round_offset = 0
+        if external_run_dir and external_run_dir.exists():
+            external_round_offset = sum(
+                1 for d in external_run_dir.iterdir()
+                if d.is_dir() and d.name.startswith("round")
+            )
+
         status_payload["state"] = "running"
         status_payload["started_at"] = run_started_at.isoformat()
         status_payload["execution_stamp"] = execution_stamp
@@ -250,15 +258,23 @@ class VmRunner:
             run_slot = f"round{index}_{test_stamp}"
             test_date = run_started_at.strftime("%Y%m%d")
             test_time = datetime.now(UTC).strftime("%H%M%S")
-            testlogs_slot = f"round{index}_{test_date}_{test_time}"
             test_artifacts_dir = execution_artifacts_dir / run_slot
             test_reports_dir = execution_reports_dir / run_slot
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)
             test_reports_dir.mkdir(parents=True, exist_ok=True)
             external_test_dir: Path | None = None
             if external_run_dir:
+                # Count existing round subdirs so successive single-test runs get round2, round3…
+                existing_round_count = sum(
+                    1 for d in external_run_dir.iterdir()
+                    if d.is_dir() and d.name.startswith("round")
+                )
+                external_round_num = existing_round_count + 1
+                testlogs_slot = f"round{external_round_num}_{test_date}_{test_time}"
                 external_test_dir = external_run_dir / testlogs_slot
                 external_test_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                testlogs_slot = f"round{index}_{test_date}_{test_time}"
 
             tests_payload[index - 1]["state"] = "running"
             tests_payload[index - 1]["run_slot"] = run_slot
