@@ -85,11 +85,29 @@ Final report is designed for business-ready sharing with:
 - Transactions detected count and transaction name list
 - Executed test plan path for traceability (`test_plan_path`)
 - Test observations
-- Prior-run comparison (when available)
-- Recommendation on best run and readiness
+- Prior-run comparison (when available) — see **Cross-Run Comparison** below
+- Verdict on best run and readiness
 
 Default report generation does not hardcode a single aggregate label (for example, `ALL`).
 It preserves discovered transaction labels from the parsed JTL/CSV output.
+
+### Cross-Run Comparison (Senior Architect Format)
+
+When two or more runs exist for the same test, the report automatically includes a structured comparison block in the Slack notification:
+
+```
+Run Comparison — Previous run (2026-05-29 14:01) vs. Current run (2026-05-29 14:05):
+Throughput:         13.28 req/s → 13.26 req/s  (stable)
+Avg Response Time:  2.75 ms → 1.94 ms  (improved 29%)
+P95 Response Time:  5.00 ms → 3.00 ms  (improved 40%)
+P99 Response Time:  8.00 ms → 7.00 ms  (improved 13%)
+Error Rate:         0.00% → 0.00%  (stable)
+Verdict: Current run is preferred — 3 metrics improved with 0 regressions detected. Approve current run as the new baseline.
+```
+
+- **Both run timestamps** appear in the heading so stakeholders know the exact window being compared.
+- **FROM → TO** values are shown for every metric (Throughput, Avg Response Time, P95, P99, Error Rate) — not just percentage changes.
+- **Verdict** gives an explicit action recommendation: approve, review, or treat as equivalent.
 
 ## Verification Before Push
 
