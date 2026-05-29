@@ -250,18 +250,18 @@ def test_vm_runner_historical_comparison_triggers_on_second_run(tmp_path: Path) 
     # Verify comparison was included in observations
     final_report = json.loads(Path(status2["final_report_latest_path"]).read_text(encoding="utf-8"))
     observations = final_report.get("Detailed Observations and Analysis", [])
-    assert any("Historical Comparison" in line for line in observations), (
-        "Expected 'Historical Comparison' in observations — cross-run comparison did not trigger"
+    assert any("Run Comparison" in line for line in observations), (
+        "Expected 'Run Comparison' heading in observations — cross-run comparison did not trigger"
     )
-    assert any("Best Run Recommendation" in line for line in observations), (
-        "Expected 'Best Run Recommendation' in observations"
+    assert any("Verdict" in line for line in observations), (
+        "Expected 'Verdict' in observations"
     )
 
     # The final_report_ready event payload should carry comparison data
     final_event = next(e for e in notifier2.events if e.event_type == "final_report_ready")
     report_payload = final_event.details["report_payload"]
     obs = report_payload.get("Detailed Observations and Analysis", [])
-    assert any("Historical Comparison" in str(line) for line in obs)
+    assert any("Run Comparison" in str(line) for line in obs)
 
 
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:

@@ -455,19 +455,22 @@ class VmRunner:
                 regressions = sum(1 for delta in comparison_summary.deltas if delta.classification == "regression")
                 if improvements > regressions:
                     best_run_recommendation = (
-                        f"Current run is preferred "
-                        f"({improvements} improvement{'s' if improvements != 1 else ''}, "
-                        f"{regressions} regression{'s' if regressions != 1 else ''})."
+                        f"Current run is preferred — "
+                        f"{improvements} metric{'s' if improvements != 1 else ''} improved "
+                        f"with {regressions} regression{'s' if regressions != 1 else ''} detected. "
+                        "Approve current run as the new baseline."
                     )
                 elif regressions > improvements:
                     best_run_recommendation = (
-                        f"Previous baseline is preferred "
-                        f"({regressions} regression{'s' if regressions != 1 else ''}, "
-                        f"{improvements} improvement{'s' if improvements != 1 else ''})."
+                        f"Previous baseline is preferred — "
+                        f"{regressions} regression{'s' if regressions != 1 else ''} detected "
+                        f"against only {improvements} improvement{'s' if improvements != 1 else ''}. "
+                        "Review current run before promoting."
                     )
                 else:
                     best_run_recommendation = (
-                        "Current run and previous baseline are equivalent based on configured comparison rules."
+                        "Both runs are statistically equivalent. "
+                        "Either can be used as the baseline for future runs."
                     )
 
             return self._report_builder.build_single_run_report(

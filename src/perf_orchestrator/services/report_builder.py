@@ -18,6 +18,15 @@ def _run_id_to_date_label(run_id: str) -> str:
     return run_id
 
 
+_COMPARISON_METRIC_FORMAT: dict[str, tuple[str, str]] = {
+    "throughput": ("Throughput", " req/s"),
+    "avg_response_ms": ("Avg Response Time", " ms"),
+    "p95_response_ms": ("P95 Response Time", " ms"),
+    "p99_response_ms": ("P99 Response Time", " ms"),
+    "error_rate_pct": ("Error Rate", "%"),
+}
+
+
 class ReportBuilder:
     def build_single_run_report(
         self,
@@ -242,12 +251,29 @@ class ReportBuilder:
         comparison_lines: list[str] = []
         if comparison_summary:
             baseline_date = _run_id_to_date_label(comparison_summary.baseline_label)
+            candidate_date = _run_id_to_date_label(comparison_summary.candidate_label)
             comparison_lines.append(
-                f"Historical Comparison vs. previous run ({baseline_date}):"
+                f"Run Comparison — Previous run ({baseline_date}) vs. Current run ({candidate_date}):"
             )
-            comparison_lines.extend(list(comparison_summary.observations))
+            for delta in comparison_summary.deltas:
+                label, unit = _COMPARISON_METRIC_FORMAT.get(
+                    delta.metric_name, (delta.metric_name, "")
+                )
+                baseline_fmt = f"{delta.baseline_value:.2f}{unit}"
+                candidate_fmt = f"{delta.candidate_value:.2f}{unit}"
+                if delta.classification == "stable":
+                    change_desc = "stable"
+                elif delta.classification == "improvement":
+                    change_desc = f"improved {abs(delta.delta_pct):.0f}%"
+                elif delta.classification == "regression":
+                    change_desc = f"regressed {abs(delta.delta_pct):.0f}%"
+                else:
+                    change_desc = "inconclusive"
+                comparison_lines.append(
+                    f"{label}: {baseline_fmt} \u2192 {candidate_fmt}  ({change_desc})"
+                )
         if best_run_recommendation:
-            comparison_lines.append(f"Best Run Recommendation: {best_run_recommendation}")
+            comparison_lines.append(f"Verdict: {best_run_recommendation}")
 
         return [
             summary,
