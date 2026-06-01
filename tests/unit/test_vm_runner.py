@@ -371,6 +371,62 @@ def test_vm_runner_historical_comparison_fallbacks_without_manifest(tmp_path: Pa
     assert any("Run Comparison" in line for line in observations)
 
 
+def test_vm_runner_historical_comparison_fallbacks_to_external_testlogs(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    external_logs_root = tmp_path / "external-testlogs"
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+            "TEST_LOG_ROOT": str(external_logs_root),
+        }
+    )
+
+    request = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="My Load Test",
+                environment_label="PERF-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=5,
+            ),
+        )
+    )
+
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+
+    # Run 1 writes external round summary.
+    result1 = orchestrator.start(request)
+    runner1 = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed1 = runner1.process_next_run()
+    assert processed1 == result1.run_paths.run_id
+
+    # Simulate missing previous shared-root run folder; external testlogs still exist.
+    run1_dir = settings.runs_dir / result1.run_paths.run_id
+    assert run1_dir.exists()
+    import shutil
+    shutil.rmtree(run1_dir)
+
+    # Run 2 should still produce comparison using external testlogs fallback.
+    result2 = orchestrator.start(request)
+    runner2 = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+    processed2 = runner2.process_next_run()
+    assert processed2 == result2.run_paths.run_id
+
+    status2 = json.loads(result2.run_paths.status_path.read_text(encoding="utf-8"))
+    report2 = json.loads(Path(status2["final_report_latest_path"]).read_text(encoding="utf-8"))
+
+    execution_summary = report2.get("Test Execution Summary", {})
+    historical_list = execution_summary.get("historical_comparisons")
+    assert isinstance(historical_list, list)
+    assert len(historical_list) >= 1
+    assert any(str(item.get("baseline", "")).startswith("round") for item in historical_list)
+
+
 def test_vm_runner_historical_comparison_caps_at_five_previous_runs(tmp_path: Path) -> None:
     jmeter_home = _make_fake_jmeter_home(tmp_path)
     (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
@@ -420,6 +476,55 @@ def test_vm_runner_historical_comparison_caps_at_five_previous_runs(tmp_path: Pa
     baselines = [item.get("baseline") for item in historical_list]
     assert run_ids[0] not in baselines
     assert run_ids[1] in baselines
+
+
+def test_vm_runner_uses_external_round_number_for_event_index(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    external_logs_root = tmp_path / "external-testlogs"
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+            "TEST_LOG_ROOT": str(external_logs_root),
+        }
+    )
+
+    request = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="Inspect_Load test",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=5,
+            ),
+        )
+    )
+
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+
+    # Run 1
+    result1 = orchestrator.start(request)
+    notifier1 = RecordingNotifier()
+    runner1 = VmRunner(settings=settings, notifier=notifier1, command_runner=FakeCommandRunner())
+    assert runner1.process_next_run() == result1.run_paths.run_id
+    started1 = next(event for event in notifier1.events if event.event_type == "test_started")
+    ended1 = next(event for event in notifier1.events if event.event_type == "test_ended")
+    assert started1.details["index"] == 1
+    assert ended1.details["index"] == 1
+
+    # Run 2 should increment using external round folder scan.
+    result2 = orchestrator.start(request)
+    notifier2 = RecordingNotifier()
+    runner2 = VmRunner(settings=settings, notifier=notifier2, command_runner=FakeCommandRunner())
+    assert runner2.process_next_run() == result2.run_paths.run_id
+    started2 = next(event for event in notifier2.events if event.event_type == "test_started")
+    ended2 = next(event for event in notifier2.events if event.event_type == "test_ended")
+    assert started2.details["index"] == 2
+    assert ended2.details["index"] == 2
 
 
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:

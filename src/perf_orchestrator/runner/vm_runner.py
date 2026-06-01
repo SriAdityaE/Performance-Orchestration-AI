@@ -231,14 +231,6 @@ class VmRunner:
             external_run_dir = self._settings.test_logs_root / f"{first_test_name_slug}-{run_date_str}"
             external_run_dir.mkdir(parents=True, exist_ok=True)
 
-        # Count existing round dirs so sequential single-test runs increment: round1, round2, round3 ...
-        external_round_offset = 0
-        if external_run_dir and external_run_dir.exists():
-            external_round_offset = sum(
-                1 for d in external_run_dir.iterdir()
-                if d.is_dir() and d.name.startswith("round")
-            )
-
         status_payload["state"] = "running"
         status_payload["started_at"] = run_started_at.isoformat()
         status_payload["execution_stamp"] = execution_stamp
@@ -263,6 +255,7 @@ class VmRunner:
             test_artifacts_dir.mkdir(parents=True, exist_ok=True)
             test_reports_dir.mkdir(parents=True, exist_ok=True)
             external_test_dir: Path | None = None
+            report_index = index
             if external_run_dir:
                 # Count existing round subdirs so successive single-test runs get round2, round3…
                 existing_round_count = sum(
@@ -270,6 +263,7 @@ class VmRunner:
                     if d.is_dir() and d.name.startswith("round")
                 )
                 external_round_num = existing_round_count + 1
+                report_index = external_round_num
                 testlogs_slot = f"round{external_round_num}_{test_date}_{test_time}"
                 external_test_dir = external_run_dir / testlogs_slot
                 external_test_dir.mkdir(parents=True, exist_ok=True)
@@ -291,7 +285,7 @@ class VmRunner:
                     run_id=run_paths.run_id,
                     test_name=test.test_name,
                     message=f"{test.test_name} - JMETER started",
-                    details={"environment": test.environment_label, "index": index},
+                    details={"environment": test.environment_label, "index": report_index},
                 ),
             )
 
@@ -367,6 +361,7 @@ class VmRunner:
             if external_test_dir:
                 tests_payload[index - 1]["external_testlogs_slot"] = str(external_test_dir)
                 tests_payload[index - 1]["testlogs_slot_name"] = testlogs_slot
+                tests_payload[index - 1]["report_index"] = report_index
             tests_payload[index - 1]["run_slot_completed_at"] = datetime.now(UTC).isoformat()
             tests_payload[index - 1]["test_plan_path"] = str(test.test_plan_path)
             if not validation.passed:
@@ -379,7 +374,7 @@ class VmRunner:
                     run_id=run_paths.run_id,
                     test_name=test.test_name,
                     message=f"{test.test_name} ended",
-                    details={"validation_passed": validation.passed, "index": index},
+                    details={"validation_passed": validation.passed, "index": report_index},
                 ),
             )
             completed_runs.append((test, summary))
@@ -443,10 +438,22 @@ class VmRunner:
             comparison_summary = None
             comparison_history = None
             best_run_recommendation = None
+            status_snapshot = read_status(run_paths)
+            external_dir_raw = status_snapshot.get("external_testlogs_dir")
+            external_run_dir = Path(str(external_dir_raw)) if external_dir_raw else None
+            tests_snapshot = status_snapshot.get("tests", [])
+            current_external_slot_name = None
+            if isinstance(tests_snapshot, list) and tests_snapshot:
+                first_test = tests_snapshot[0]
+                if isinstance(first_test, dict):
+                    slot_name = first_test.get("testlogs_slot_name")
+                    current_external_slot_name = str(slot_name) if slot_name else None
             previous_history = self._find_previous_single_run_metrics_history(
                 run_paths.run_id,
                 test.test_name,
                 limit=MAX_TESTS_PER_REQUEST,
+                external_run_dir=external_run_dir,
+                current_external_slot_name=current_external_slot_name,
             )
             if previous_history:
                 comparison_history = tuple(
@@ -545,9 +552,12 @@ class VmRunner:
         current_test_name: str,
         *,
         limit: int,
+        external_run_dir: Path | None = None,
+        current_external_slot_name: str | None = None,
     ) -> list[tuple[str, object]]:
         current_test_name_norm = current_test_name.strip().casefold()
         matches: list[tuple[str, object]] = []
+        seen_labels: set[str] = set()
 
         for run_dir in sorted(self._settings.runs_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
             if not run_dir.is_dir() or run_dir.name == current_run_id:
@@ -587,8 +597,37 @@ class VmRunner:
 
             summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
             matches.append((run_dir.name, parse_metrics(summary_payload["metrics"])))
+            seen_labels.add(run_dir.name)
             if len(matches) >= limit:
                 break
+
+        if len(matches) < limit and external_run_dir and external_run_dir.exists():
+            round_dirs = sorted(
+                (
+                    d
+                    for d in external_run_dir.iterdir()
+                    if d.is_dir() and d.name.startswith("round")
+                ),
+                key=lambda item: item.stat().st_mtime,
+                reverse=True,
+            )
+            for round_dir in round_dirs:
+                if current_external_slot_name and round_dir.name == current_external_slot_name:
+                    continue
+                summary_path = round_dir / "summary.json"
+                if not summary_path.exists():
+                    continue
+                label = round_dir.name
+                if label in seen_labels:
+                    continue
+                summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+                metrics_payload = summary_payload.get("metrics")
+                if not isinstance(metrics_payload, dict):
+                    continue
+                matches.append((label, parse_metrics(metrics_payload)))
+                seen_labels.add(label)
+                if len(matches) >= limit:
+                    break
 
         return matches
 
