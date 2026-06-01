@@ -33,7 +33,7 @@ export function formatSingleRunReport(
           "Hello Team,\n\n" +
           `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
           "The attached summary includes validation checks, aggregate metrics, and architect-level observations. " +
-          "Please find the below detailed observations.",
+          "Please find below the architect-level test observations and recommendations.",
       },
     },
     {
@@ -88,7 +88,7 @@ export function formatSingleRunReport(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*Analysis & Observations*\n${observations.map((line) => `• ${String(line)}`).join("\n")}`,
+        text: `*Architect-Level Test Observations*\n${observations.map((line) => `• ${String(line)}`).join("\n")}`,
       },
     });
   }

@@ -36,7 +36,7 @@ export function formatComparisonReport(
           "Hello Team,\n\n" +
           `Please find the detailed performance comparison for ${runNames.join(" vs ")} executed on ${reportDate}. ` +
           "The attached summary includes validation checks, baseline-candidate deltas, and architect-level observations. " +
-          "Please find the below detailed observations.",
+          "Please find below the architect-level test observations and recommendations.",
       },
     },
     {
@@ -74,7 +74,7 @@ export function formatComparisonReport(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*Detailed Two-Run Analysis*\n${analysis.map((item) => `• ${formatDeltaLine(item)}`).join("\n")}`,
+        text: `*Architect-Level Two-Run Analysis*\n${analysis.map((item) => `• ${formatDeltaLine(item)}`).join("\n")}`,
       },
     });
   }
