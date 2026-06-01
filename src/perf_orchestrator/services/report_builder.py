@@ -37,6 +37,7 @@ class ReportBuilder:
         metrics: TestMetrics,
         validation: ValidationResult,
         comparison_summary: ComparisonSummary | None = None,
+        comparison_history: tuple[ComparisonSummary, ...] | None = None,
         best_run_recommendation: str | None = None,
         custom_format: dict[str, object] | None = None,
     ) -> dict[str, object]:
@@ -89,6 +90,50 @@ class ReportBuilder:
                 "validation_passed": validation.passed,
                 "threshold_checks": validation.threshold_checks,
                 "target_checks": validation.target_checks,
+                **(
+                    {
+                        "historical_comparison": {
+                            "baseline": comparison_summary.baseline_label,
+                            "candidate": comparison_summary.candidate_label,
+                            "deltas": [
+                                {
+                                    "metric": delta.metric_name,
+                                    "baseline": delta.baseline_value,
+                                    "candidate": delta.candidate_value,
+                                    "delta_pct": delta.delta_pct,
+                                    "classification": delta.classification,
+                                }
+                                for delta in comparison_summary.deltas
+                            ],
+                            "recommendation": best_run_recommendation,
+                        }
+                    }
+                    if comparison_summary
+                    else {}
+                ),
+                **(
+                    {
+                        "historical_comparisons": [
+                            {
+                                "baseline": summary.baseline_label,
+                                "candidate": summary.candidate_label,
+                                "deltas": [
+                                    {
+                                        "metric": delta.metric_name,
+                                        "baseline": delta.baseline_value,
+                                        "candidate": delta.candidate_value,
+                                        "delta_pct": delta.delta_pct,
+                                        "classification": delta.classification,
+                                    }
+                                    for delta in summary.deltas
+                                ],
+                            }
+                            for summary in comparison_history
+                        ]
+                    }
+                    if comparison_history
+                    else {}
+                ),
             },
             "Detailed Observations and Analysis": test_observations,
         }

@@ -441,10 +441,25 @@ class VmRunner:
             test, summary = completed_runs[0]
             current_metrics = parse_metrics(summary["metrics"])
             comparison_summary = None
+            comparison_history = None
             best_run_recommendation = None
-            previous = self._find_previous_single_run_metrics(run_paths.run_id, test.test_name)
-            if previous:
-                previous_run_id, previous_metrics = previous
+            previous_history = self._find_previous_single_run_metrics_history(
+                run_paths.run_id,
+                test.test_name,
+                limit=MAX_TESTS_PER_REQUEST,
+            )
+            if previous_history:
+                comparison_history = tuple(
+                    self._comparator.compare(
+                        baseline_label=previous_run_id,
+                        baseline=previous_metrics,
+                        candidate_label=run_paths.run_id,
+                        candidate=current_metrics,
+                    )
+                    for previous_run_id, previous_metrics in previous_history
+                )
+
+                previous_run_id, previous_metrics = previous_history[0]
                 comparison_summary = self._comparator.compare(
                     baseline_label=previous_run_id,
                     baseline=previous_metrics,
@@ -480,6 +495,7 @@ class VmRunner:
                 metrics=current_metrics,
                 validation=parse_validation(summary["validation"]),
                 comparison_summary=comparison_summary,
+                comparison_history=comparison_history,
                 best_run_recommendation=best_run_recommendation,
                 custom_format=custom_format,
             )
@@ -523,12 +539,15 @@ class VmRunner:
             write_status(run_paths, status_payload)
             raise
 
-    def _find_previous_single_run_metrics(
+    def _find_previous_single_run_metrics_history(
         self,
         current_run_id: str,
         current_test_name: str,
-    ) -> tuple[str, object] | None:
+        *,
+        limit: int,
+    ) -> list[tuple[str, object]]:
         current_test_name_norm = current_test_name.strip().casefold()
+        matches: list[tuple[str, object]] = []
 
         for run_dir in sorted(self._settings.runs_dir.iterdir(), key=lambda item: item.stat().st_mtime, reverse=True):
             if not run_dir.is_dir() or run_dir.name == current_run_id:
@@ -567,9 +586,25 @@ class VmRunner:
                 continue
 
             summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
-            return run_dir.name, parse_metrics(summary_payload["metrics"])
+            matches.append((run_dir.name, parse_metrics(summary_payload["metrics"])))
+            if len(matches) >= limit:
+                break
 
-        return None
+        return matches
+
+    def _find_previous_single_run_metrics(
+        self,
+        current_run_id: str,
+        current_test_name: str,
+    ) -> tuple[str, object] | None:
+        history = self._find_previous_single_run_metrics_history(
+            current_run_id,
+            current_test_name,
+            limit=1,
+        )
+        if not history:
+            return None
+        return history[0]
 
 
 def parse_metrics(payload: dict[str, object]):

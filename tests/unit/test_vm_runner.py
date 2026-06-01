@@ -304,6 +304,14 @@ def test_vm_runner_historical_comparison_triggers_on_second_run(tmp_path: Path) 
     obs = report_payload.get("Detailed Observations and Analysis", [])
     assert any("Run Comparison" in str(line) for line in obs)
 
+    execution_summary = report_payload.get("Test Execution Summary", {})
+    historical_comparison = execution_summary.get("historical_comparison")
+    assert isinstance(historical_comparison, dict)
+    assert historical_comparison.get("baseline") == result1.run_paths.run_id
+    assert historical_comparison.get("candidate") == result2.run_paths.run_id
+    assert isinstance(historical_comparison.get("deltas"), list)
+    assert len(historical_comparison.get("deltas")) > 0
+
 
 def test_vm_runner_historical_comparison_fallbacks_without_manifest(tmp_path: Path) -> None:
     jmeter_home = _make_fake_jmeter_home(tmp_path)
@@ -361,6 +369,57 @@ def test_vm_runner_historical_comparison_fallbacks_without_manifest(tmp_path: Pa
     final_report = json.loads(Path(status2["final_report_latest_path"]).read_text(encoding="utf-8"))
     observations = final_report.get("Detailed Observations and Analysis", [])
     assert any("Run Comparison" in line for line in observations)
+
+
+def test_vm_runner_historical_comparison_caps_at_five_previous_runs(tmp_path: Path) -> None:
+    jmeter_home = _make_fake_jmeter_home(tmp_path)
+    (tmp_path / "plan.jmx").write_text("<jmeterTestPlan/>", encoding="utf-8")
+    settings = load_settings(
+        {
+            "PERF_SHARED_ROOT": str(tmp_path),
+            "JMETER_HOME": str(jmeter_home),
+            "NOTIFICATION_CHANNEL": "terminal",
+        }
+    )
+
+    request = RunRequest(
+        tests=(
+            TestDefinition(
+                test_name="Inspect_Load test",
+                environment_label="PRD-VM",
+                test_plan_path=tmp_path / "plan.jmx",
+                user_count=100,
+                ramp_up_seconds=30,
+                duration_minutes=5,
+                expected_throughput=200.0,
+            ),
+        )
+    )
+
+    orchestrator = LocalOrchestrator(settings=settings, notifier=RecordingNotifier())
+    run_ids: list[str] = []
+
+    for _ in range(7):
+        result = orchestrator.start(request)
+        run_ids.append(result.run_paths.run_id)
+        runner = VmRunner(settings=settings, notifier=RecordingNotifier(), command_runner=FakeCommandRunner())
+        processed = runner.process_next_run()
+        assert processed == result.run_paths.run_id
+
+    latest_run_id = run_ids[-1]
+    latest_status = json.loads((settings.runs_dir / latest_run_id / "status.json").read_text(encoding="utf-8"))
+    final_report = json.loads(Path(latest_status["final_report_latest_path"]).read_text(encoding="utf-8"))
+
+    execution_summary = final_report.get("Test Execution Summary", {})
+    historical_list = execution_summary.get("historical_comparisons")
+    assert isinstance(historical_list, list)
+    assert len(historical_list) == 5
+
+    # The immediate previous run should be first; oldest run should be outside the capped list.
+    assert historical_list[0]["baseline"] == run_ids[-2]
+    baselines = [item.get("baseline") for item in historical_list]
+    assert run_ids[0] not in baselines
+    assert run_ids[1] in baselines
 
 
 def test_parse_metrics_preserves_aggregate_rows_and_transaction_names() -> None:

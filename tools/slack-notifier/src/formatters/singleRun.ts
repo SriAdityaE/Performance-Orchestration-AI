@@ -32,8 +32,8 @@ export function formatSingleRunReport(
           `*Subject:* ${subject}\n\n` +
           "Hello Team,\n\n" +
           `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
-          "The attached summary includes validation checks, aggregate metrics, and architect-level observations. " +
-          "Please find below the architect-level test observations and recommendations.",
+          "The attached summary includes validation checks, aggregate metrics, and detailed observations. " +
+          "Please find below the detailed test observations and recommendations.\n\n",
       },
     },
     {
@@ -81,6 +81,38 @@ export function formatSingleRunReport(
         text: formatExecutionAsMarkdown(execution),
       },
     });
+
+    const historicalComparisons = Array.isArray(execution.historical_comparisons)
+      ? (execution.historical_comparisons as Record<string, unknown>[])
+      : [];
+    if (historicalComparisons.length > 0) {
+      const comparisonMarkdown = formatHistoricalComparisonsAsMarkdown(historicalComparisons);
+      if (comparisonMarkdown) {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: comparisonMarkdown,
+          },
+        });
+      }
+    } else {
+      const historicalComparison = execution.historical_comparison as
+        | Record<string, unknown>
+        | undefined;
+      if (historicalComparison) {
+        const comparisonMarkdown = formatHistoricalComparisonAsMarkdown(historicalComparison);
+        if (comparisonMarkdown) {
+          blocks.push({
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: comparisonMarkdown,
+            },
+          });
+        }
+      }
+    }
   }
 
   if (Array.isArray(observations) && observations.length > 0) {
@@ -88,7 +120,7 @@ export function formatSingleRunReport(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*Architect-Level Test Observations*\n${observations.map((line) => `• ${String(line)}`).join("\n")}`,
+        text: `*Detailed Test Observations*\n${observations.map((line) => `• ${String(line)}`).join("\n")}`,
       },
     });
   }
@@ -195,6 +227,75 @@ function formatExecutionAsMarkdown(execution: Record<string, unknown>): string {
     `• *Duration:* ${duration} minutes\n\n` +
     checksText
   );
+}
+
+function formatHistoricalComparisonAsMarkdown(historicalComparison: Record<string, unknown>): string {
+  const baseline = String(historicalComparison.baseline ?? "N/A");
+  const candidate = String(historicalComparison.candidate ?? "N/A");
+  const recommendation = String(historicalComparison.recommendation ?? "").trim();
+  const deltas = Array.isArray(historicalComparison.deltas)
+    ? (historicalComparison.deltas as Record<string, unknown>[])
+    : [];
+
+  if (deltas.length === 0) {
+    return "";
+  }
+
+  const lines = [
+    "*Detailed Comparison (Previous vs Current)*",
+    `• *Baseline:* ${baseline}`,
+    `• *Current:* ${candidate}`,
+  ];
+
+  for (const delta of deltas) {
+    const metric = String(delta.metric ?? "metric");
+    const baselineValue = Number(delta.baseline ?? 0).toFixed(2);
+    const candidateValue = Number(delta.candidate ?? 0).toFixed(2);
+    const deltaPct = Number(delta.delta_pct ?? 0).toFixed(2);
+    const classification = String(delta.classification ?? "N/A");
+    lines.push(
+      `• ${metric}: baseline=${baselineValue}, current=${candidateValue}, delta=${deltaPct}%, classification=${classification}`,
+    );
+  }
+
+  if (recommendation) {
+    lines.push(`• *Recommendation:* ${recommendation}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatHistoricalComparisonsAsMarkdown(historicalComparisons: Record<string, unknown>[]): string {
+  const limited = historicalComparisons.slice(0, 5);
+  if (limited.length === 0) {
+    return "";
+  }
+
+  const lines: string[] = [
+    `*Detailed Comparison (Recent ${limited.length} Runs vs Current; cap 5)*`,
+  ];
+
+  for (const comparison of limited) {
+    const baseline = String(comparison.baseline ?? "N/A");
+    const candidate = String(comparison.candidate ?? "N/A");
+    lines.push(`• *Baseline:* ${baseline} -> *Current:* ${candidate}`);
+
+    const deltas = Array.isArray(comparison.deltas)
+      ? (comparison.deltas as Record<string, unknown>[])
+      : [];
+    for (const delta of deltas) {
+      const metric = String(delta.metric ?? "metric");
+      const baselineValue = Number(delta.baseline ?? 0).toFixed(2);
+      const candidateValue = Number(delta.candidate ?? 0).toFixed(2);
+      const deltaPct = Number(delta.delta_pct ?? 0).toFixed(2);
+      const classification = String(delta.classification ?? "N/A");
+      lines.push(
+        `  - ${metric}: baseline=${baselineValue}, current=${candidateValue}, delta=${deltaPct}%, classification=${classification}`,
+      );
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function formatValue(value: unknown): string {
