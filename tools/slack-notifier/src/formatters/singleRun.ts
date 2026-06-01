@@ -238,13 +238,13 @@ function formatHistoricalComparisonAsMarkdown(historicalComparison: Record<strin
   }
 
   const lines = [
-    "*Historical Baseline Comparison (Previous Run vs Current Run)*",
+    "*Run-over-Run Baseline Comparison (Previous vs Current)*",
     `• *Baseline:* ${baseline}`,
     `• *Current:* ${candidate}`,
   ];
 
   for (const delta of deltas) {
-    const metric = String(delta.metric ?? "metric");
+    const metric = formatComparisonMetricLabel(String(delta.metric ?? "metric"));
     const baselineValue = Number(delta.baseline ?? 0).toFixed(2);
     const candidateValue = Number(delta.candidate ?? 0).toFixed(2);
     const deltaPct = Number(delta.delta_pct ?? 0).toFixed(2);
@@ -268,19 +268,19 @@ function formatHistoricalComparisonsAsMarkdown(historicalComparisons: Record<str
   }
 
   const lines: string[] = [
-    `*Historical Baseline Comparison (Recent ${limited.length} Runs vs Current Run)*`,
+    `*Run-over-Run Baseline Comparison (Recent ${limited.length} Baselines vs Current Run)*`,
   ];
 
   for (const comparison of limited) {
     const baseline = String(comparison.baseline ?? "N/A");
     const candidate = String(comparison.candidate ?? "N/A");
-    lines.push(`• *Baseline:* ${baseline} -> *Current:* ${candidate}`);
+    lines.push(`• *Prior Baseline:* ${baseline} -> *Current Run:* ${candidate}`);
 
     const deltas = Array.isArray(comparison.deltas)
       ? (comparison.deltas as Record<string, unknown>[])
       : [];
     for (const delta of deltas) {
-      const metric = String(delta.metric ?? "metric");
+      const metric = formatComparisonMetricLabel(String(delta.metric ?? "metric"));
       const baselineValue = Number(delta.baseline ?? 0).toFixed(2);
       const candidateValue = Number(delta.candidate ?? 0).toFixed(2);
       const deltaPct = Number(delta.delta_pct ?? 0).toFixed(2);
@@ -292,6 +292,17 @@ function formatHistoricalComparisonsAsMarkdown(historicalComparisons: Record<str
   }
 
   return lines.join("\n");
+}
+
+function formatComparisonMetricLabel(metric: string): string {
+  const labelMap: Record<string, string> = {
+    throughput: "Throughput",
+    avg_response_ms: "Avg Response Time",
+    p95_response_ms: "P95 Response Time",
+    p99_response_ms: "P99 Response Time",
+    error_rate_pct: "Error Rate",
+  };
+  return labelMap[metric] ?? metric;
 }
 
 function formatValue(value: unknown): string {
