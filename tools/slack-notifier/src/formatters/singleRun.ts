@@ -32,8 +32,8 @@ export function formatSingleRunReport(
           `*Subject:* ${subject}\n\n` +
           "Hello Team,\n\n" +
           `Please find the reviewed performance report for ${testName} executed on ${reportDate}. ` +
-          "The attached summary includes validation checks, aggregate metrics, and detailed observations. " +
-          "Please find below the detailed test observations and recommendations.\n\n",
+          "The attached summary includes validation checks, aggregate metrics, and trend analysis. " +
+          "Please find below the trend analysis and recommendations.\n\n",
       },
     },
     {
@@ -120,7 +120,10 @@ export function formatSingleRunReport(
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*Detailed Test Observations*\n${observations.map((line) => `• ${String(line)}`).join("\n")}`,
+        text:
+          "*Trend Analysis (Comparing multiple historical runs)*\n" +
+          "What it means: Trend Analysis looks at a continuous sequence of past test runs to spot gradual changes or anomalies.\n" +
+          `${observations.map((line) => `• ${String(line)}`).join("\n")}`,
       },
     });
   }
