@@ -317,9 +317,6 @@ class ReportBuilder:
                 comparison_lines.append(
                     f"{label}: {baseline_fmt} \u2192 {candidate_fmt}  ({change_desc})"
                 )
-        if best_run_recommendation:
-            comparison_lines.append(f"Verdict: {best_run_recommendation}")
-
         return [
             summary,
             latency,

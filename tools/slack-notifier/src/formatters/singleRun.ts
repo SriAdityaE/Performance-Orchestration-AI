@@ -22,6 +22,7 @@ export function formatSingleRunReport(
   const reportDate = formatReportDate(context?.occurredAt);
   const subject = `${testName} ${reportDate}`;
   const signerName = context?.signerName ?? "Performance Team";
+  let historicalComparisonMarkdown = "";
 
   const blocks: Record<string, unknown>[] = [
     {
@@ -86,33 +87,16 @@ export function formatSingleRunReport(
       ? (execution.historical_comparisons as Record<string, unknown>[])
       : [];
     if (historicalComparisons.length > 0) {
-      const comparisonMarkdown = formatHistoricalComparisonsAsMarkdown(historicalComparisons);
-      if (comparisonMarkdown) {
-        blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: comparisonMarkdown,
-          },
-        });
-      }
+      historicalComparisonMarkdown = formatHistoricalComparisonsAsMarkdown(historicalComparisons);
     } else {
       const historicalComparison = execution.historical_comparison as
         | Record<string, unknown>
         | undefined;
       if (historicalComparison) {
-        const comparisonMarkdown = formatHistoricalComparisonAsMarkdown(historicalComparison);
-        if (comparisonMarkdown) {
-          blocks.push({
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: comparisonMarkdown,
-            },
-          });
-        }
+        historicalComparisonMarkdown = formatHistoricalComparisonAsMarkdown(historicalComparison);
       }
     }
+
   }
 
   if (Array.isArray(observations) && observations.length > 0) {
@@ -121,8 +105,18 @@ export function formatSingleRunReport(
       text: {
         type: "mrkdwn",
         text:
-          "*Trend Analysis*\n" +
+          "*Performance Engineer Assessment*\n" +
           `${observations.map((line) => `• ${String(line)}`).join("\n")}`,
+      },
+    });
+  }
+
+  if (historicalComparisonMarkdown) {
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: historicalComparisonMarkdown,
       },
     });
   }
@@ -244,7 +238,7 @@ function formatHistoricalComparisonAsMarkdown(historicalComparison: Record<strin
   }
 
   const lines = [
-    "*Detailed Comparison (Previous vs Current)*",
+    "*Historical Baseline Comparison (Previous Run vs Current Run)*",
     `• *Baseline:* ${baseline}`,
     `• *Current:* ${candidate}`,
   ];
@@ -274,7 +268,7 @@ function formatHistoricalComparisonsAsMarkdown(historicalComparisons: Record<str
   }
 
   const lines: string[] = [
-    `*Detailed Comparison (Recent ${limited.length} Runs vs Current; cap 5)*`,
+    `*Historical Baseline Comparison (Recent ${limited.length} Runs vs Current Run)*`,
   ];
 
   for (const comparison of limited) {
