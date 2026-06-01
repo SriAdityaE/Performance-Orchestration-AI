@@ -121,8 +121,7 @@ export function formatSingleRunReport(
       text: {
         type: "mrkdwn",
         text:
-          "*Trend Analysis (Comparing multiple historical runs)*\n" +
-          "What it means: Trend Analysis looks at a continuous sequence of past test runs to spot gradual changes or anomalies.\n" +
+          "*Trend Analysis*\n" +
           `${observations.map((line) => `• ${String(line)}`).join("\n")}`,
       },
     });

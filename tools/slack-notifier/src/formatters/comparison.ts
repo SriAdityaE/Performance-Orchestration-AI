@@ -75,8 +75,7 @@ export function formatComparisonReport(
       text: {
         type: "mrkdwn",
         text:
-          "*Trend Analysis (Comparing multiple historical runs)*\n" +
-          "What it means: Trend Analysis looks at a continuous sequence of past test runs to spot gradual changes or anomalies.\n" +
+          "*Trend Analysis*\n" +
           `${analysis.map((item) => `• ${formatDeltaLine(item)}`).join("\n")}`,
       },
     });
