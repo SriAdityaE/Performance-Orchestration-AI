@@ -39,6 +39,7 @@ class ReportBuilder:
         comparison_summary: ComparisonSummary | None = None,
         comparison_history: tuple[ComparisonSummary, ...] | None = None,
         best_run_recommendation: str | None = None,
+        profile_compatibility_warning: str | None = None,
         custom_format: dict[str, object] | None = None,
     ) -> dict[str, object]:
         test_observations = self._build_test_observations(
@@ -48,6 +49,7 @@ class ReportBuilder:
             validation=validation,
             comparison_summary=comparison_summary,
             best_run_recommendation=best_run_recommendation,
+            profile_compatibility_warning=profile_compatibility_warning,
         )
         transaction_names, aggregate_rows = self._build_single_run_aggregate_view(test_name, metrics)
 
@@ -175,8 +177,13 @@ class ReportBuilder:
         current_rounds: tuple[tuple[str, TestMetrics], ...],
         comparison: ComparisonSummary,
         recommendation: str,
+        extra_observations: tuple[str, ...] | None = None,
         custom_format: dict[str, object] | None = None,
     ) -> dict[str, object]:
+        merged_observations: list[str] = []
+        if extra_observations:
+            merged_observations.extend(str(item) for item in extra_observations)
+        merged_observations.extend(comparison.observations)
         base = {
             "Today's Test Results Summary": {
                 name: {
@@ -193,7 +200,7 @@ class ReportBuilder:
             "Test Execution Summary": {
                 "baseline": comparison.baseline_label,
                 "candidate": comparison.candidate_label,
-                "observations": list(comparison.observations),
+                "observations": merged_observations,
             },
             "Detailed Observations and Analysis": [
                 {
@@ -270,6 +277,7 @@ class ReportBuilder:
         validation: ValidationResult,
         comparison_summary: ComparisonSummary | None,
         best_run_recommendation: str | None,
+        profile_compatibility_warning: str | None = None,
     ) -> list[str]:
         summary = (
             f"Executive Summary: Run '{test_name}' on {environment_label} processed "
@@ -300,6 +308,10 @@ class ReportBuilder:
             comparison_lines.append(
                 f"Run Comparison — Previous run ({baseline_date}) vs. Current run ({candidate_date}):"
             )
+            if profile_compatibility_warning:
+                comparison_lines.append(
+                    f"⚠ Profile advisory: {profile_compatibility_warning}"
+                )
             for delta in comparison_summary.deltas:
                 label, unit = _COMPARISON_METRIC_FORMAT.get(
                     delta.metric_name, (delta.metric_name, "")

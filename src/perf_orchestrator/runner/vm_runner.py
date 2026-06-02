@@ -438,6 +438,7 @@ class VmRunner:
             comparison_summary = None
             comparison_history = None
             best_run_recommendation = None
+            profile_compatibility_warning: str | None = None
             status_snapshot = read_status(run_paths)
             external_dir_raw = status_snapshot.get("external_testlogs_dir")
             external_run_dir = Path(str(external_dir_raw)) if external_dir_raw else None
@@ -473,6 +474,12 @@ class VmRunner:
                     candidate_label=run_paths.run_id,
                     candidate=current_metrics,
                 )
+                profile_check = self._comparator.assess_profile_compatibility(
+                    baseline_samples=previous_metrics.transactions,
+                    candidate_samples=current_metrics.transactions,
+                )
+                if not profile_check.comparable and profile_check.reason:
+                    profile_compatibility_warning = profile_check.reason
                 improvements = sum(1 for delta in comparison_summary.deltas if delta.classification == "improvement")
                 regressions = sum(1 for delta in comparison_summary.deltas if delta.classification == "regression")
                 if improvements > regressions:
@@ -504,6 +511,7 @@ class VmRunner:
                 comparison_summary=comparison_summary,
                 comparison_history=comparison_history,
                 best_run_recommendation=best_run_recommendation,
+                profile_compatibility_warning=profile_compatibility_warning,
                 custom_format=custom_format,
             )
 
@@ -523,6 +531,15 @@ class VmRunner:
             last_label,
             last_metrics,
         )
+        multi_profile_check = self._comparator.assess_profile_compatibility(
+            baseline_samples=first_metrics.transactions,
+            candidate_samples=last_metrics.transactions,
+        )
+        extra_observations: tuple[str, ...] = (
+            (f"⚠ Profile advisory: {multi_profile_check.reason}",)
+            if (not multi_profile_check.comparable and multi_profile_check.reason)
+            else ()
+        )
         recommendation = "Investigate before approval" if any(
             delta.classification == "regression" for delta in comparison.deltas
         ) else "Approve for rollout"
@@ -530,6 +547,7 @@ class VmRunner:
             current_rounds=tuple(labeled_runs),
             comparison=comparison,
             recommendation=recommendation,
+            extra_observations=extra_observations,
             custom_format=custom_format,
         )
 

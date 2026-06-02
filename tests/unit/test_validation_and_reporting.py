@@ -30,8 +30,11 @@ def test_metrics_validator_passes_default_thresholds() -> None:
 
 def test_metrics_comparator_flags_regression_when_latency_rises() -> None:
     comparator = MetricsComparator()
-    baseline = TestMetrics(1000, 100.0, 2, 3, 5, 50, 0.0, 60)
-    candidate = TestMetrics(1005, 95.0, 2.5, 4.0, 6.0, 60, 0.0, 60)
+    # Use realistic latency values where a >10% delta is also above the
+    # measurement-noise floor (5 ms). 3 -> 4 ms style deltas are noise and
+    # are covered by `test_metrics_comparator_treats_subfloor_latency_as_stable`.
+    baseline = TestMetrics(1000, 100.0, 50, 100, 150, 400, 0.0, 60)
+    candidate = TestMetrics(1005, 95.0, 60, 130, 200, 450, 0.0, 60)
 
     summary = comparator.compare("round-1", baseline, "round-2", candidate)
 
@@ -39,6 +42,72 @@ def test_metrics_comparator_flags_regression_when_latency_rises() -> None:
     assert classifications["throughput"] == "stable"
     assert classifications["p95_response_ms"] == "regression"
     assert classifications["p99_response_ms"] == "regression"
+
+
+def test_metrics_comparator_treats_subfloor_latency_as_stable() -> None:
+    """1 ms ticks at single-digit-ms scale must not be reported as regressions.
+
+    Regression guard for the false positives observed in production Slack
+    reports where P99 oscillated 3 ms <-> 4 ms (33% delta) and was
+    misclassified as a regression.
+    """
+    comparator = MetricsComparator()
+    baseline = TestMetrics(2217, 22.03, 1.43, 2.0, 3.0, 367.0, 0.0, 5)
+    candidate = TestMetrics(2217, 22.04, 1.49, 2.0, 4.0, 388.0, 0.0, 5)
+
+    summary = comparator.compare("round-6", baseline, "round-8", candidate)
+    classifications = {delta.metric_name: delta.classification for delta in summary.deltas}
+
+    assert classifications["avg_response_ms"] == "stable"
+    assert classifications["p95_response_ms"] == "stable"
+    assert classifications["p99_response_ms"] == "stable"
+
+
+def test_metrics_comparator_still_flags_large_latency_regression() -> None:
+    comparator = MetricsComparator()
+    baseline = TestMetrics(1000, 100.0, 50, 100, 150, 400, 0.0, 60)
+    # +200 ms on p95 is well above the 5 ms noise floor and >10% delta.
+    candidate = TestMetrics(1000, 100.0, 50, 300, 400, 500, 0.0, 60)
+
+    summary = comparator.compare("a", baseline, "b", candidate)
+    classifications = {delta.metric_name: delta.classification for delta in summary.deltas}
+
+    assert classifications["p95_response_ms"] == "regression"
+    assert classifications["p99_response_ms"] == "regression"
+
+
+def test_assess_profile_compatibility_flags_mismatched_sample_counts() -> None:
+    """Different load profiles must not be silently compared.
+
+    Mirrors the production case where round 3 (2668 samples) was compared
+    with round 4 (1958 samples) and the orchestrator reported a "46%
+    improvement" that actually reflected a load-profile change.
+    """
+    comparator = MetricsComparator()
+
+    result = comparator.assess_profile_compatibility(2668, 1958)
+
+    assert result.comparable is False
+    assert result.reason is not None
+    assert "sample count differs" in result.reason
+
+
+def test_assess_profile_compatibility_accepts_close_sample_counts() -> None:
+    comparator = MetricsComparator()
+
+    result = comparator.assess_profile_compatibility(2217, 2200)
+
+    assert result.comparable is True
+    assert result.reason is None
+
+
+def test_assess_profile_compatibility_rejects_zero_samples() -> None:
+    comparator = MetricsComparator()
+
+    result = comparator.assess_profile_compatibility(0, 2000)
+
+    assert result.comparable is False
+    assert result.reason is not None
 
 
 def test_report_builder_uses_required_single_run_sections() -> None:
@@ -206,3 +275,54 @@ def test_comparison_report_includes_both_runs_and_observations() -> None:
     assert report["Test Execution Summary"]["baseline"] == "Run1"
     assert report["Test Execution Summary"]["candidate"] == "Run2"
     assert len(report["Detailed Observations and Analysis"]) > 0
+
+
+def test_single_run_report_surfaces_profile_compatibility_warning() -> None:
+    comparator = MetricsComparator()
+    builder = ReportBuilder()
+    validator = MetricsValidator(ValidationThresholds())
+    baseline = TestMetrics(2668, 13.29, 1.45, 2.0, 3.0, 369.0, 0.0, 5)
+    candidate = TestMetrics(1958, 19.43, 1.54, 2.0, 3.0, 378.0, 0.0, 5)
+    comparison = comparator.compare("round1", baseline, "round2", candidate)
+    profile_check = comparator.assess_profile_compatibility(
+        baseline_samples=baseline.transactions,
+        candidate_samples=candidate.transactions,
+    )
+    assert profile_check.comparable is False
+    assert profile_check.reason is not None
+
+    report = builder.build_single_run_report(
+        test_name="My Load Test",
+        environment_label="PERF-VM",
+        metrics=candidate,
+        validation=validator.validate(candidate),
+        comparison_summary=comparison,
+        profile_compatibility_warning=profile_check.reason,
+    )
+
+    observations = report["Detailed Observations and Analysis"]
+    assert any("Profile advisory" in line for line in observations)
+    assert any("sample count differs" in line for line in observations)
+
+
+def test_comparison_report_surfaces_profile_compatibility_warning() -> None:
+    comparator = MetricsComparator()
+    builder = ReportBuilder()
+    run1 = TestMetrics(900, 45.0, 100, 140, 180, 300, 0.0, 20)
+    run2 = TestMetrics(450, 50.0, 95, 130, 170, 280, 0.0, 20)
+    comparison = comparator.compare("Run1", run1, "Run2", run2)
+    profile_check = comparator.assess_profile_compatibility(
+        baseline_samples=run1.transactions,
+        candidate_samples=run2.transactions,
+    )
+    assert profile_check.comparable is False
+
+    report = builder.build_comparison_report(
+        current_rounds=(("Run1", run1), ("Run2", run2)),
+        comparison=comparison,
+        recommendation="Approve for rollout",
+        extra_observations=(f"⚠ Profile advisory: {profile_check.reason}",),
+    )
+
+    observations = report["Test Execution Summary"]["observations"]
+    assert any("Profile advisory" in obs for obs in observations)
