@@ -199,6 +199,20 @@ python -m pytest tests/unit/test_config.py tests/unit/test_vm_runner.py -q
 - If you are running on a new machine, confirm the shared-root path and JMeter home match the actual environment.
 - The project is intentionally structured to be readable and traceable, but it is not a full SaaS platform; it is a workflow automation repo for performance-test orchestration.
 
+## Security and public release checklist
+
+Before making the repo public, confirm the following:
+
+- [.env.example](.env.example) contains only placeholders and no real values.
+- Local .env files are never committed; they are ignored by the repo rules.
+- Slack and Teams webhook values are supplied through environment variables only.
+- Shared run output under [shared-root](shared-root) is not intended for permanent source control and should be treated as runtime data.
+- Generated Python caches, build output, and Node dependencies are excluded from the repository.
+- Any internal company references, internal URLs, or hostnames are removed before release.
+- The README and examples use placeholders instead of real machine paths and secrets.
+
+This repository is safe for public sharing when these rules are respected.
+
 ## Related design docs
 
 - [specs/001-perf-test-orchestration/spec.md](specs/001-perf-test-orchestration/spec.md)
