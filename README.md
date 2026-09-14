@@ -1,127 +1,210 @@
 # Performance Orchestration AI
 
-This project orchestrates performance-test execution on VM, captures artifacts and lifecycle status, and sends stakeholder-facing notifications/reports to Slack.
+Performance Orchestration AI is a local-to-VM performance testing workflow for running JMeter-based load tests, capturing execution artifacts, validating results, and sending structured lifecycle updates or final summaries to Slack or Teams.
 
-## What It Does
+It is designed for teams that want repeatable performance runs, consistent project-side file contracts, and business-readable reporting without hardcoding secrets into the repository.
 
-- Accepts run requests (single-run or two-run comparison).
-- Queues requests in a shared-root contract (`requests/` and `runs/`).
-- Executes JMeter on VM.
-- Stores status, events, logs, artifacts, and reports per run.
-- Sends lifecycle notifications and final report to Slack.
+## What this project does
 
-## Core Flow
+- Accepts a run request describing one or more JMeter test definitions.
+- Stores requests and execution state using a shared-root contract under a common folder.
+- Queues work for a VM runner and tracks lifecycle status per run.
+- Executes JMeter on the VM, captures logs and JTL results, and parses the output.
+- Validates throughput, latency, and error-rate thresholds.
+- Builds a final report with aggregate metrics, transaction breakdowns, and comparison views.
+- Sends notifications for lifecycle events and the final report to Slack and/or Teams.
 
-1. Submit request.
-2. VM runner picks queued request.
-3. JMeter executes and writes `.jtl` results.
-4. Metrics are parsed and validated.
-5. Final report is generated.
-6. Slack receives lifecycle notifications and final report.
+## Architecture at a glance
 
-## Key Paths
+The project is organized into a few key layers:
 
-- Request template: `request.json`
-- Shared root (default): `<project-root>\shared-root`
-- Queued pointers: `shared-root\requests\*.json`
-- Run folders: `shared-root\runs\<run_id>\`
-- Per-run logs: `shared-root\runs\<run_id>\logs\`
-- JMeter script (default): `L:\AI_SPEC\Xinspect_JMeterTest.jmx`
-- JTL artifacts (date bucket + backup slots): `shared-root\runs\<run_id>\artifacts\jtl\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\test_<index>.jtl`
-- Per-test summary backups: `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\Run<index>_<YYYYMMDD-HHMMSS>\summary.json`
-- Final report (timestamped backup): `shared-root\runs\<run_id>\reports\<DD-MM(MMM-Do)>\final_report_<YYYYMMDD-HHMMSS>.json`
-- Final report (latest compatibility copy): `shared-root\runs\<run_id>\reports\final_report.json`
-- External mirror backups (default, round-based naming): `L:\testlogs\<run_id>\<DD-MM(MMM-Do)>\<YYYYMMDD>_<test_name>_round<index>_<HHMMSS>\...`
-- Events log: `shared-root\runs\<run_id>\events.jsonl`
+- Request model and validation: [src/perf_orchestrator/models/run_request.py](src/perf_orchestrator/models/run_request.py)
+- Runtime settings/configuration: [src/perf_orchestrator/config.py](src/perf_orchestrator/config.py)
+- Local orchestration entrypoint: [src/perf_orchestrator/services/orchestrator.py](src/perf_orchestrator/services/orchestrator.py)
+- VM execution and result parsing: [src/perf_orchestrator/runner/vm_runner.py](src/perf_orchestrator/runner/vm_runner.py)
+- Reporting and comparisons: [src/perf_orchestrator/services/report_builder.py](src/perf_orchestrator/services/report_builder.py) and [src/perf_orchestrator/services/comparator.py](src/perf_orchestrator/services/comparator.py)
+- Notification bridge: [src/perf_orchestrator/services/notifier.py](src/perf_orchestrator/services/notifier.py)
 
-## Run Scripts
+## Main workflow
 
-### Simplest Demo Command (VM)
+1. Prepare a request JSON payload.
+2. Submit it through the local submit script.
+3. The request is written into the shared-root request queue.
+4. The VM runner reads the next queued request.
+5. JMeter runs against the configured test plan and writes JTL output.
+6. The runner parses JTL data, validates metrics, builds comparison summaries, and writes the report.
+7. Lifecycle events and the final report are sent to the configured notification channel.
 
-Run from `scripts` folder:
+## Repository structure
+
+- [src/perf_orchestrator](src/perf_orchestrator) — main Python implementation
+- [tests/unit](tests/unit) — validation and unit tests
+- [scripts](scripts) — helper scripts for running the workflow locally or on a VM
+- [tools/slack-notifier](tools/slack-notifier) — Node-based notifier used to send final Slack/Teams payloads
+- [shared-root](shared-root) — runtime output structure used by the orchestrator
+- [specs/001-perf-test-orchestration](specs/001-perf-test-orchestration) — product/spec documentation
+- [request.json](request.json) — sample request template
+- [.env.example](.env.example) — environment variable template
+
+## Prerequisites
+
+Before running the project, make sure the following are available:
+
+- Python 3.11+
+- JMeter installation on the target VM or execution machine
+- A shared folder accessible from both the local machine and the VM
+- A Slack webhook URL and/or Teams webhook URL if notifications are enabled
+- Node.js if the notifier is used in Slack/Teams mode
+
+## Environment setup
+
+1. Copy [.env.example](.env.example) to a local file named .env.
+2. Fill in the required values:
+   - PERF_SHARED_ROOT
+   - JMETER_HOME
+   - NOTIFICATION_CHANNEL
+   - SLACK_WEBHOOK_URL or TEAMS_WEBHOOK_URL
+3. Keep .env out of Git by following the existing .gitignore rules.
+
+Example values are already shown in [.env.example](.env.example). Do not commit real secrets.
+
+## Sample request
+
+A sample request is provided in [request.json](request.json). It includes one or more tests and notification preferences.
+
+Example structure:
+
+```json
+{
+  "tests": [
+    {
+      "test_name": "My Load Test",
+      "environment_label": "PERF-VM",
+      "test_plan_path": "L:/path/to/your/TestPlan.jmx",
+      "ramp_up_seconds": 30,
+      "duration_minutes": 5,
+      "expected_throughput": 200.0
+    }
+  ],
+  "notification": {
+    "channel": "slack"
+  }
+}
+```
+
+## Run the project
+
+From the project root, use the PowerShell wrappers in the root folder:
+
+### Local submit
 
 ```powershell
-.\Run-OneTerminal.ps1
+.\Start-LocalSubmit.ps1
 ```
 
-This command handles submit + process + final status/events in one terminal.
-By default, it uses Slack channel and sends one startup notification plus standard lifecycle notifications.
-It also archives previously queued request pointers before submit so the latest request is executed.
+This creates the request and enqueues it for processing.
 
-### Useful One-Terminal Options
+### VM runner
 
 ```powershell
-.\Run-OneTerminal.ps1 -NotificationChannel terminal
-.\Run-OneTerminal.ps1 -KillPreviousProcesses
-.\Run-OneTerminal.ps1 -SkipQueueCleanup
-.\.\Run-OneTerminal.ps1 -TestPlanPath "L:\AI_SPEC\Xinspect_JMeterTest.jmx"
+.\Start-VmRunner.ps1
 ```
 
-### Wrapper Scripts
+This watches the shared-root request queue and runs the queued JMeter workload.
 
-- Local submit wrapper: `Start-LocalSubmit.ps1`
-- VM runner wrapper: `Start-VmRunner.ps1`
-
-Implementation scripts live under `scripts/`:
-
-- `scripts/Start-LocalSubmit.ps1`
-- `scripts/Start-VmRunner.ps1`
-- `scripts/Run-OneTerminal.ps1`
-- `scripts/Reset-RunQueue.ps1`
-
-## Local vs VM
-
-- Local terminal is used for request preparation/submission and optional watch mode.
-- VM terminal executes JMeter and produces runtime lifecycle/report outputs.
-- For reliable demos, use VM one-terminal flow (`scripts/Run-OneTerminal.ps1`).
-
-## Reporting Style
-
-Final report is designed for business-ready sharing with:
-
-- Test summary
-- Aggregate-style metric visibility
-- Transaction-level aggregate rows derived from JMeter `label` values (plus `TOTAL`)
-- Transactions detected count and transaction name list
-- Executed test plan path for traceability (`test_plan_path`)
-- Test observations
-- Prior-run comparison (when available) — see **Cross-Run Comparison** below
-- Verdict on best run and readiness
-
-Default report generation does not hardcode a single aggregate label (for example, `ALL`).
-It preserves discovered transaction labels from the parsed JTL/CSV output.
-
-### Cross-Run Comparison (Senior Architect Format)
-
-When two or more runs exist for the same test, the report automatically includes a structured comparison block in the Slack notification:
-
-```
-Run Comparison — Previous run (2026-05-29 14:01) vs. Current run (2026-05-29 14:05):
-Throughput:         13.28 req/s → 13.26 req/s  (stable)
-Avg Response Time:  2.75 ms → 1.94 ms  (improved 29%)
-P95 Response Time:  5.00 ms → 3.00 ms  (improved 40%)
-P99 Response Time:  8.00 ms → 7.00 ms  (improved 13%)
-Error Rate:         0.00% → 0.00%  (stable)
-Verdict: Current run is preferred — 3 metrics improved with 0 regressions detected. Approve current run as the new baseline.
-```
-
-- **Both run timestamps** appear in the heading so stakeholders know the exact window being compared.
-- **FROM → TO** values are shown for every metric (Throughput, Avg Response Time, P95, P99, Error Rate) — not just percentage changes.
-- **Verdict** gives an explicit action recommendation: approve, review, or treat as equivalent.
-
-## Verification Before Push
-
-Run local script parse checks and targeted tests before pushing script changes:
+### Single-terminal workflow
 
 ```powershell
-# Run from your repository root
-Set-Location "<your-repo-root>"
-foreach ($file in @('scripts\\Run-OneTerminal.ps1','Start-LocalSubmit.ps1','scripts\\Start-LocalSubmit.ps1','Start-VmRunner.ps1','scripts\\Start-VmRunner.ps1')) { [void][scriptblock]::Create((Get-Content $file -Raw)); Write-Host "OK $file" }
+.\scripts\Run-OneTerminal.ps1
+```
+
+This is the easiest demo flow when you want submission, execution, and final lifecycle/status handling in one terminal session.
+
+### Reset queued runs
+
+```powershell
+.\scripts\Reset-RunQueue.ps1
+```
+
+This is useful when you want to clear old run state before a fresh demo or test cycle.
+
+## Shared-root contract
+
+The system uses a standard shared folder layout for automation and traceability.
+
+Typical structure:
+
+```text
+shared-root/
+  requests/
+    queued-request.json
+    stale/
+  runs/
+    run-YYYYMMDDHHMMSS-abc123/
+      run_request.json
+      status.json
+      logs/
+      artifacts/
+      reports/
+```
+
+This makes it easy for local submission scripts and VM runner scripts to coordinate without relying on a database.
+
+## Reports and comparisons
+
+The project builds reports from JMeter output and can compare results across runs.
+
+This includes:
+
+- throughput
+- average response time
+- p95 and p99 latency
+- error rate
+- transaction-level aggregates
+- run-to-run comparison summaries
+- recommendation text for whether the current run is better or equivalent
+
+The comparison logic includes safeguards so load-profile changes or small measurement noise do not create misleading conclusions.
+
+## Notification behavior
+
+The notifier can emit lifecycle events and final report payloads to:
+
+- Slack
+- Teams
+- terminal output
+
+The runtime behavior is controlled by the NOTIFICATION_CHANNEL setting and the webhook URL environment variables.
+
+## Validation
+
+The repo includes unit tests for the configuration and orchestration logic.
+
+Run the tests with:
+
+```powershell
+python -m pytest -q
+```
+
+or a focused subset:
+
+```powershell
 python -m pytest tests/unit/test_config.py tests/unit/test_vm_runner.py -q
 ```
 
-## Related Specs
+## Important notes
 
-- `specs/001-perf-test-orchestration/spec.md`
-- `specs/001-perf-test-orchestration/quickstart.md`
-- `specs/001-perf-test-orchestration/contracts/shared-root-run-contract.md`
+- No real credentials or secrets should be stored in this repository.
+- Keep webhook URLs in environment variables or secure secret stores.
+- If you are running on a new machine, confirm the shared-root path and JMeter home match the actual environment.
+- The project is intentionally structured to be readable and traceable, but it is not a full SaaS platform; it is a workflow automation repo for performance-test orchestration.
+
+## Related design docs
+
+- [specs/001-perf-test-orchestration/spec.md](specs/001-perf-test-orchestration/spec.md)
+- [specs/001-perf-test-orchestration/quickstart.md](specs/001-perf-test-orchestration/quickstart.md)
+- [specs/001-perf-test-orchestration/contracts/shared-root-run-contract.md](specs/001-perf-test-orchestration/contracts/shared-root-run-contract.md)
+
+## License
+
+This project is shared for internal collaboration and evaluation. If you want it published with a formal license, add one before making it public to a wider audience.
